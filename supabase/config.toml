@@ -1,0 +1,5 @@
+
+[functions.delhivery]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/delhivery/index.ts"

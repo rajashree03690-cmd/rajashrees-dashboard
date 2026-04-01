@@ -1,0 +1,73 @@
+﻿[dotenv@17.2.3] injecting env (7) from .env.local -- tip: ≡ƒöÉ prevent building .env in docker: https://dotenvx.com/prebuild
+=== PRODUCT DATA ANALYSIS ===
+
+--- 1. Does master_product have a SKU column? ---
+master_product columns: product_id, wc_product_id, name, subcategory_id, description, short_description, category_id, image_url, rating, review_count, is_Active, is_featured, meta_title, meta_description, meta_keywords, created_at, updated_at, wc_status, wc_type, tags, attributes, min_price, max_price, total_stock, sku, slug, has_variant, parent_id, size, image_2_url, image_3_url
+Has SKU column: YES
+
+--- 2. Master products with SKU set ---
+master_products with non-null SKU: 10
+  - [126331] Premium impon ruby and white stone bangle - 2.8 | SKU: RFP-B8230
+  - [134042] Designer Haram | SKU: RFP-H9999
+  - [134044] Bangle | SKU: 1112
+  - [134036] Bangle | SKU: 1111
+  - [134045] Ring | SKU: 1212
+  - [126332] Premium impon ruby and white stone bangle - 2.10 | SKU: RFP-B8231
+  - [134043] Premium quality impon Bangle | SKU: RFP-B8895-2.4
+  - [134046] One plus | SKU: 1213
+  - [134037] Premium foaming AD stone jhumka | SKU: RFP-J8694
+  - [134165] Premium foaming AD stone mugappu chain | SKU: RFP-9098
+
+--- 3. Product variants with 0 or null saleprice ---
+Variants with 0/null saleprice: 18
+Of those, also no regularprice: 18
+
+Sample (first 15):
+  - [134039] SKU: 1112-2.8 | sale: 0 | regular: 0 | name: Bangle - Size 2.8
+  - [134040] SKU: 1112-2.10 | sale: 0 | regular: 0 | name: Bangle - Size 2.10
+  - [134285] SKU: RFP-ANK8872-7.5 | sale: 0 | regular: 0 | name: Premium foaming anklets - Size 7.5
+  - [134286] SKU: RFP-ANK8872-8 | sale: 0 | regular: 0 | name: Premium foaming anklets - Size 8
+  - [134287] SKU: RFP-ANK8872-8.5 | sale: 0 | regular: 0 | name: Premium foaming anklets - Size 8.5
+  - [134288] SKU: RFP-ANK8872-9 | sale: 0 | regular: 0 | name: Premium foaming anklets - Size 9
+  - [134289] SKU: RFP-ANK8872-9.5 | sale: 0 | regular: 0 | name: Premium foaming anklets - Size 9.5
+  - [134290] SKU: RFP-ANK8872-10 | sale: 0 | regular: 0 | name: Premium foaming anklets - Size 10
+  - [134291] SKU: RFP-ANK8872-10.5 | sale: 0 | regular: 0 | name: Premium foaming anklets - Size 10.5
+  - [134292] SKU: RFP-ANK8872-11 | sale: 0 | regular: 0 | name: Premium foaming anklets - Size 11
+  - [134188] SKU: RFP-ANK8925-7.5 | sale: 0 | regular: 0 | name: Premium impon anklet size 11.5 - Size 7.5
+  - [134189] SKU: RFP-ANK8925-8 | sale: 0 | regular: 0 | name: Premium impon anklet size 11.5 - Size 8
+  - [134190] SKU: RFP-ANK8925-8.5 | sale: 0 | regular: 0 | name: Premium impon anklet size 11.5 - Size 8.5
+  - [134191] SKU: RFP-ANK8925-9 | sale: 0 | regular: 0 | name: Premium impon anklet size 11.5 - Size 9
+  - [134192] SKU: RFP-ANK8925-9.5 | sale: 0 | regular: 0 | name: Premium impon anklet size 11.5 - Size 9.5
+
+--- 4. Total Counts ---
+Total master_products: 7152
+Total product_variants: 8881
+Total combos: 0
+
+--- 5. Products without any variants ---
+Products with NO variants: 312
+  - [126331] Premium impon ruby and white stone bangle - 2.8
+  - [134036] Bangle
+  - [126332] Premium impon ruby and white stone bangle - 2.10
+  - [134037] Premium foaming AD stone jhumka
+  - [134038] Premium foaming AD ruby and white stone jhumka 
+  - [134039] Premium foaming 3 line chain daily use
+  - [134040] Kids Anglet
+  - [5886] Foaming real gold tone bangle - 2.4
+  - [134034] Premium foaming mens bracelet
+  - [127741] Premium impon bangle 2 pair - 2.4
+
+--- 6. Variants with null/missing product_id ---
+Variants with NULL product_id: 0
+
+--- 7. SKU mapping overview ---
+Unique variant SKUs: 8880
+Unique combo SKUs: 0
+Variants with empty/null SKU: 1
+  - [101648] name: Premium impon Ad stone bracelet | product_id: 101648
+
+--- 8. master_product with SKU but no matching variant ---
+master_products with SKU NOT in product_variants: 3
+  - [134044] Bangle | SKU: 1112
+  - [134036] Bangle | SKU: 1111
+  - [134037] Premium foaming AD stone jhumka | SKU: RFP-J8694

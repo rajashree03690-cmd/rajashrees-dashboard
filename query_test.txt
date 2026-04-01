@@ -1,0 +1,4 @@
+﻿[dotenv@17.2.3] injecting env (7) from .env.local -- tip: Γ£à audit secrets and track compliance: https://dotenvx.com/ops
+Testing master_product query...
+Success! Fetched 21 rows
+Time taken: 16838ms

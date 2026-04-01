@@ -1,0 +1,49 @@
+{
+  "data": {
+    "message": "A new client warehouse has been created in HQ(Delhivery).",
+    "name": "b64af4-ORANGEOWLTEXTILESPRI-do",
+    "phone": "9999999999",
+    "address": "123 Test Address",
+    "pincode": 110001,
+    "active": true,
+    "client": "BARTEST-B2C",
+    "type_of_clientwarehouse": null,
+    "largest_vehicle_constraint": null,
+    "business_hours": {
+      "MON": {
+        "start_time": "09:30",
+        "close_time": "18:30"
+      },
+      "TUE": {
+        "start_time": "09:30",
+        "close_time": "18:30"
+      },
+      "WED": {
+        "start_time": "09:30",
+        "close_time": "18:30"
+      },
+      "THU": {
+        "start_time": "09:30",
+        "close_time": "18:30"
+      },
+      "FRI": {
+        "start_time": "09:30",
+        "close_time": "18:30"
+      },
+      "SAT": {
+        "start_time": "09:30",
+        "close_time": "18:30"
+      }
+    },
+    "business_days": [
+      "MON",
+      "TUE",
+      "WED",
+      "THU",
+      "FRI",
+      "SAT"
+    ]
+  },
+  "success": true,
+  "error": ""
+}

@@ -1,0 +1,56 @@
+﻿[dotenv@17.2.3] injecting env (7) from .env.local -- tip: ≡ƒöæ add access controls to secrets: https://dotenvx.com/ops
+
+=== Code: 9111 ===
+Exact variant SKU match: 0 []
+Partial variant SKU match: 1
+  - [134211] SKU: RFP-CMB9111 | name: Premium foaming budget combo
+Exact master_product SKU match: 0 []
+Match by product_id: 0 []
+Partial master_product SKU match: 1
+  - [134172] Premium foaming budget combo | SKU: RFP-CMB9111
+
+=== Code: 9177 ===
+Exact variant SKU match: 0 []
+Partial variant SKU match: 1
+  - [134366] SKU: RFP-FCM9177 | name: Premium foaming special offer combo
+Exact master_product SKU match: 0 []
+Match by product_id: 0 []
+Partial master_product SKU match: 1
+  - [134296] Premium foaming special offer combo | SKU: RFP-FCM9177
+
+=== Code: MAT9096 ===
+Exact variant SKU match: 0 []
+Partial variant SKU match: 1
+  - [134199] SKU: RFP-MAT9096 | name: Premium matt emerald mid haram
+Exact master_product SKU match: 0 []
+Partial master_product SKU match: 1
+  - [134163] Premium matt emerald mid haram | SKU: RFP-MAT9096
+
+=== Code: 9113 ===
+Exact variant SKU match: 0 []
+Partial variant SKU match: 1
+  - [134213] SKU: RFP-9113 | name: Premium foaming 1 day offer vinayagar dollar chain
+Exact master_product SKU match: 0 []
+Match by product_id: 0 []
+Partial master_product SKU match: 1
+  - [134174] Premium foaming 1 day offer vinayagar dollar chain | SKU: RFP-9113
+
+=== Code: 5139 ===
+Exact variant SKU match: 0 []
+Partial variant SKU match: 1
+  - [250] SKU: RFP-5139 | name: Premium 28 inches impon dollar chain
+Exact master_product SKU match: 0 []
+Match by product_id: 0 []
+Partial master_product SKU match: 1
+  - [51866] Premium 28 inches impon dollar chain | SKU: RFP-5139
+
+=== Code: FCM5146 ===
+Exact variant SKU match: 0 []
+Partial variant SKU match: 1
+  - [51952] SKU: RFP-FCM5146 | name: Premium Foaming TURKISH enamel long chain comes earing
+Exact master_product SKU match: 0 []
+Partial master_product SKU match: 1
+  - [51952] Premium Foaming TURKISH enamel long chain comes earing | SKU: RFP-FCM5146
+
+=== Sample SKUs in product_variants ===
+ RFP-8797,  RFP-8847,  RFP-8890,  RFP-ANK8869-Free Size,  RFP-BR8894,  RFP-CMB8917,  RFP-FCM8893,  RFP-H8897,  RFP-J8920,  RFP-J8921,  RFP-MAT8849,  RFP-MAT8861,  RFP-MAT8881,  RFP-MAT8909,  RFP-N8851,  RFP-N8879,  RFP-N8907, -2.1, -2.4, -2.6

@@ -1,0 +1,64 @@
+﻿[dotenv@17.2.3] injecting env (7) from .env.local -- tip: ≡ƒöÉ prevent committing .env to code: https://dotenvx.com/precommit
+
+=== Testing SKU: "9111" ===
+Status: 200
+Response: {
+  "type": "product",
+  "details": {
+    "product_id": 134172,
+    "name": "Premium foaming budget combo",
+    "description": "PACKAGE CONTENT ΓÇôPremium foaming budget combo\n\nCARE INSTRUCTIONS ΓÇô No direct perfume, deo, water, and spray on the jewellery. don wear jewellery before use your makeup, perfume ΓÇô This will keep your jewellery shining for years. Please store in air-tight container\n\nMake material:Copper and brass alloy",
+    "has_variant": false,
+    "image_url": "data:image/jpeg;base
+
+=== Testing SKU: "CMB9111" ===
+Status: 200
+Response: {
+  "type": "product",
+  "details": {
+    "product_id": 134172,
+    "name": "Premium foaming budget combo",
+    "description": "PACKAGE CONTENT ΓÇôPremium foaming budget combo\n\nCARE INSTRUCTIONS ΓÇô No direct perfume, deo, water, and spray on the jewellery. don wear jewellery before use your makeup, perfume ΓÇô This will keep your jewellery shining for years. Please store in air-tight container\n\nMake material:Copper and brass alloy",
+    "has_variant": false,
+    "image_url": "data:image/jpeg;base
+
+=== Testing SKU: "RFP-CMB9111" ===
+Status: 200
+Response: {
+  "type": "product",
+  "details": {
+    "product_id": 134172,
+    "name": "Premium foaming budget combo",
+    "description": "PACKAGE CONTENT ΓÇôPremium foaming budget combo\n\nCARE INSTRUCTIONS ΓÇô No direct perfume, deo, water, and spray on the jewellery. don wear jewellery before use your makeup, perfume ΓÇô This will keep your jewellery shining for years. Please store in air-tight container\n\nMake material:Copper and brass alloy",
+    "has_variant": false,
+    "image_url": "data:image/jpeg;base
+
+=== Testing SKU: "9113" ===
+Status: 200
+Response: {
+  "type": "product",
+  "details": {
+    "product_id": 134174,
+    "name": "Premium foaming 1 day offer vinayagar dollar chain",
+    "description": "PACKAGE CONTENT ΓÇôPremium foaming 1 day offer vinayagar dollar chain\n\nCARE INSTRUCTIONS ΓÇô No direct perfume, deo, water, and spray on the jewellery. don wear jewellery before use your makeup, perfume ΓÇô This will keep your jewellery shining for years. Please store in air-tight container\n\nMake material:Copper and brass alloy",
+    "has_variant": f
+
+=== Testing SKU: "MAT9096" ===
+Status: 200
+Response: {
+  "type": "product",
+  "details": {
+    "product_id": 134163,
+    "name": "Premium matt emerald mid haram",
+    "description": "PACKAGE CONTENT ΓÇô Premium matt emerald mid haram\n\nCARE INSTRUCTIONS ΓÇô No direct perfume, deo, water, and spray on the jewellery. don wear jewellery before use your makeup, perfume ΓÇô This will keep your jewellery shining for years. Please store in air-tight container\n\nMake material:Copper and brass alloy",
+    "has_variant": false,
+    "image_url": "data:image/jpeg
+
+=== Testing SKU: "5139" ===
+Status: 200
+Response: {
+  "type": "product",
+  "details": {
+    "product_id": 51866,
+    "name": "Premium 28 inches impon dollar chain",
+    "description": "<p><strong>PACKAGE CONTENT ├óΓé¼ΓÇ£ </strong>Premium 28 inches impon dollar chain</p> <p><strong>CARE INSTRUCTIONS ├óΓé¼ΓÇ£</strong> No direct perfume, deo, water, and spray on the jewellery. don wear jewellery before use your makeup, perfume ├óΓé¼ΓÇ£ This will keep your jewellery shining for years. Please store in air-tight container</p> <p><strong>Make material:</strong>Coppe

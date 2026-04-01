@@ -1,0 +1,27 @@
+{
+  "cash_pickups_count": 0,
+  "package_count": 1,
+  "prepaid_count": 1,
+  "pickups_count": 0,
+  "replacement_count": 0,
+  "cash_pickups": 0,
+  "cod_amount": 0,
+  "cod_count": 0,
+  "upload_wbn": "UPL16749188976832364715",
+  "packages": [
+    {
+      "waybill": "6055910020075",
+      "refnum": "TEST-ORD-93",
+      "client": "BARTEST-B2C",
+      "payment": "Pre-paid",
+      "cod_amount": 0,
+      "status": "Success",
+      "sort_code": null,
+      "serviceable": false,
+      "remarks": [
+        ""
+      ]
+    }
+  ],
+  "success": true
+}
