@@ -50,7 +50,7 @@ steps:
       - '8080'
       - '--allow-unauthenticated'
       - '--set-secrets'
-      - 'SUPABASE_SERVICE_ROLE_KEY=supabase-service-role-key:latest,RESEND_API_KEY=resend-api-key:latest'
+      - 'SUPABASE_SERVICE_ROLE_KEY=SUPABASE_SERVICE_ROLE_KEY:latest,RESEND_API_KEY=RESEND_API_KEY:latest'
       - '--min-instances'
       - '0'
       - '--max-instances'
@@ -67,9 +67,9 @@ steps:
 # Secrets from Secret Manager (for build-time NEXT_PUBLIC_ vars)
 availableSecrets:
   secretManager:
-    - versionName: projects/$PROJECT_ID/secrets/next-public-supabase-url/versions/latest
+    - versionName: projects/$PROJECT_ID/secrets/NEXT_PUBLIC_SUPABASE_URL/versions/latest
       env: 'NEXT_PUBLIC_SUPABASE_URL'
-    - versionName: projects/$PROJECT_ID/secrets/next-public-supabase-anon-key/versions/latest
+    - versionName: projects/$PROJECT_ID/secrets/NEXT_PUBLIC_SUPABASE_ANON_KEY/versions/latest
       env: 'NEXT_PUBLIC_SUPABASE_ANON_KEY'
     - versionName: projects/$PROJECT_ID/secrets/next-public-site-url/versions/latest
       env: 'NEXT_PUBLIC_SITE_URL'
