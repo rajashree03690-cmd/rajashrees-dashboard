@@ -24,6 +24,7 @@ steps:
       - '--build-arg'
       - 'NEXT_PUBLIC_SITE_URL=$$NEXT_PUBLIC_SITE_URL'
       - '.'
+    secretEnv: ['NEXT_PUBLIC_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_ANON_KEY', 'NEXT_PUBLIC_SITE_URL']
 
   # Step 2: Push image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
