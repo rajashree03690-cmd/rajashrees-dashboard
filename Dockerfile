@@ -25,6 +25,10 @@ ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
 ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
 ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
 
+# Dummy runtime keys to prevent Next.js static evaluation from crashing
+ENV SUPABASE_SERVICE_ROLE_KEY="dummy_key_for_build"
+ENV RESEND_API_KEY="re_dummykey_for_build"
+
 RUN npm run build
 
 # Stage 3: Production runner (minimal image)
