@@ -1,0 +1,4 @@
+# Rajashree Fashion Admin Dashboard
+# Disallow all crawling — this is a private admin panel
+User-agent: *
+Disallow: /

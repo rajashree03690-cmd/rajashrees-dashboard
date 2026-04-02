@@ -1,0 +1,43 @@
+# Dependencies
+node_modules
+npm-debug.log*
+
+# Next.js build output
+.next
+
+# Git
+.git
+.gitignore
+
+# Supabase (edge functions deployed separately)
+supabase/
+scripts/
+
+# Documentation
+*.md
+ADMIN_CREDENTIALS.md
+DOCUMENTATION.md
+README.md
+
+# IDE
+.vscode
+.idea
+
+# Environment files
+.env*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# CI/CD
+cloudbuild.yaml
+
+# Vercel
+.vercel
+vercel.json
+
+# Misc
+*.log
+*.txt
+*.sql
