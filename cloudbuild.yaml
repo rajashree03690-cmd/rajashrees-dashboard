@@ -5,7 +5,7 @@
 
 substitutions:
   _REGION: asia-south1
-  _REPOSITORY: rajashreefashion-dashboard
+  _REPOSITORY: dashboard
   _SERVICE_PREFIX: dashboard
 
 steps:
