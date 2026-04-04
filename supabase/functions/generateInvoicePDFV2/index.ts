@@ -13,6 +13,17 @@ const supabase = createClient(
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 );
 
+// Helper function to sanitize text for PDF (remove unsupported characters)
+function sanitizeText(text: string): string {
+    if (!text) return '';
+    // Remove Tamil and other unsupported Unicode characters
+    // Keep only ASCII printable characters, spaces, and common punctuation
+    return text
+        .replace(/[^\x20-\x7E]/g, '') // Remove non-ASCII characters
+        .replace(/\s+/g, ' ') // Normalize whitespace
+        .trim();
+}
+
 // Tamil text renderer
 async function renderTamilText(text: string) {
     const encoded = encodeURIComponent(text);
@@ -66,6 +77,7 @@ serve(async (req) => {
         order_items (
           quantity,
           catalogue_product_id,
+          is_combo,
           product_variants (
             variant_name,
             sku,
@@ -100,19 +112,48 @@ serve(async (req) => {
         const shippingState = order.shipping_state || customer.state || "";
         const shippingAmount = Number(order.shipping_amount || 0);
 
-        // Map items from database format
-        const items = (order.order_items || []).map((item: any) => {
-            const variant = item.product_variants || {};
-            const master = variant.master_product || {};
+        // 🎯 FIX: Map items with combo support — fetch combo details from combo table
+        const items: any[] = [];
+        for (const item of (order.order_items || [])) {
+            if (item.is_combo) {
+                // Fetch combo details directly from the combo table
+                const { data: comboData } = await supabase
+                    .from('combo')
+                    .select('name, sku, saleprice, regularprice')
+                    .eq('combo_id', item.catalogue_product_id)
+                    .maybeSingle();
 
-            return {
-                product_name: master.name || "",
-                variant_name: variant.variant_name || "",
-                sku: variant.sku || "",
-                price: Number(variant.saleprice || variant.regularprice || 0),
-                quantity: item.quantity || 1
-            };
-        });
+                if (comboData) {
+                    items.push({
+                        product_name: comboData.name || "Combo",
+                        variant_name: "",
+                        sku: comboData.sku || "",
+                        price: Number(comboData.saleprice || comboData.regularprice || 0),
+                        quantity: item.quantity || 1,
+                    });
+                } else {
+                    // Fallback: combo not found in DB, use whatever we have
+                    console.warn(`⚠️ Combo ${item.catalogue_product_id} not found in combo table`);
+                    items.push({
+                        product_name: `Combo #${item.catalogue_product_id}`,
+                        variant_name: "",
+                        sku: "",
+                        price: 0,
+                        quantity: item.quantity || 1,
+                    });
+                }
+            } else {
+                const variant = item.product_variants || {};
+                const master = variant.master_product || {};
+                items.push({
+                    product_name: master.name || "",
+                    variant_name: variant.variant_name || "",
+                    sku: variant.sku || "",
+                    price: Number(variant.saleprice || variant.regularprice || 0),
+                    quantity: item.quantity || 1,
+                });
+            }
+        }
 
         // GST
         const totalGstRate = 3;
@@ -206,35 +247,35 @@ serve(async (req) => {
             .join("\n");
 
         // Customer Name (Bold/larger)
-        page.drawText(customerName, { x: 50, y, size: 12, font });
+        page.drawText(sanitizeText(customerName), { x: 50, y, size: 12, font });
         y -= 16;
 
-        // Address lines
+        // Address lines (sanitize to remove unsupported characters)
         const addressLines = trimmedAddress.split("\n");
         for (const line of addressLines) {
             if (line.trim()) {
-                page.drawText(line.trim(), { x: 50, y, size: 10, font });
+                page.drawText(sanitizeText(line.trim()), { x: 50, y, size: 10, font });
                 y -= 14;
             }
         }
 
         // Pincode, State, City
         if (shipping_pincode) {
-            page.drawText(`Pincode: ${shipping_pincode}`, { x: 50, y, size: 10, font });
+            page.drawText(sanitizeText(`Pincode: ${shipping_pincode}`), { x: 50, y, size: 10, font });
             y -= 14;
         }
         if (shippingState) {
-            page.drawText(`State: ${shippingState}`, { x: 50, y, size: 10, font });
+            page.drawText(sanitizeText(`State: ${shippingState}`), { x: 50, y, size: 10, font });
             y -= 14;
         }
 
         // Contact Details
         if (mobileNumber) {
-            page.drawText(`Phone: ${mobileNumber}`, { x: 50, y, size: 10, font });
+            page.drawText(sanitizeText(`Phone: ${mobileNumber}`), { x: 50, y, size: 10, font });
             y -= 14;
         }
         if (whatsappNumber && whatsappNumber !== mobileNumber) {
-            page.drawText(`WhatsApp: ${whatsappNumber}`, { x: 50, y, size: 10, font });
+            page.drawText(sanitizeText(`WhatsApp: ${whatsappNumber}`), { x: 50, y, size: 10, font });
             y -= 14;
         }
 
@@ -285,7 +326,9 @@ serve(async (req) => {
             const total = (item.price * qty).toFixed(2);
 
             const sku = item.sku ? String(item.sku).trim() : "";
-            const raw = `${sku ? sku + " - " : ""}${item.product_name || ""} ${item.variant_name || ""}`.trim();
+            const productName = sanitizeText(item.product_name || "");
+            const variantName = sanitizeText(item.variant_name || "");
+            const raw = `${sku ? sku + " - " : ""}${productName} ${variantName}`.trim();
 
             function wrapText(text: string, maxChars: number) {
                 const chars = Array.from(text);
@@ -320,7 +363,7 @@ serve(async (req) => {
 
             let lineY = y - 12;
             for (const line of wrappedLines) {
-                page.drawText(line, { x: colX.product, y: lineY, size: 10, font });
+                page.drawText(sanitizeText(line), { x: colX.product, y: lineY, size: 10, font });
                 lineY -= lineHeight;
             }
 

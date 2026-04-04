@@ -72,6 +72,97 @@ serve(async (req) => {
     // Safe reference to payment_transaction_id (could be empty/undefined/null)
     const txId = (payment_transaction_id || "").trim();
 
+    // --- Pricing & Zero-Price Failsafe Guardrail ---
+    // Recalculate true backend price directly from DB
+    let trueBackendTotal = 0;
+    const resolvedOrderItems = [];
+
+    for (const item of items) {
+      let isCombo = false;
+      let resolvedVariantId = item.variant_id;
+      let itemPrice = 0;
+
+      // 1. Check if it's a combo
+      try {
+        const { data: comboCheck } = await supabase
+          .from("combo")
+          .select("combo_id, saleprice, regularprice")
+          .eq("combo_id", item.variant_id)
+          .limit(1);
+        if (comboCheck && comboCheck.length > 0) {
+          isCombo = true;
+          itemPrice = comboCheck[0].saleprice || comboCheck[0].regularprice || 0;
+        }
+      } catch (comboErr) {
+        console.error("Error checking combo:", comboErr);
+      }
+
+      // 2. If not a combo, check product_variants (and handle auto-resolve)
+      if (!isCombo) {
+        const { data: variantCheck } = await supabase
+          .from("product_variants")
+          .select("variant_id, saleprice, regularprice")
+          .eq("variant_id", item.variant_id)
+          .limit(1)
+          .maybeSingle();
+
+        if (variantCheck) {
+          itemPrice = variantCheck.saleprice || variantCheck.regularprice || 0;
+        } else {
+          // Auto-resolve fallback: Check if the ID provided was actually a product_id
+          const { data: fallbackVariant } = await supabase
+            .from("product_variants")
+            .select("variant_id, saleprice, regularprice")
+            .eq("product_id", item.variant_id)
+            .eq("is_Active", true)
+            .limit(1)
+            .maybeSingle();
+
+          if (fallbackVariant) {
+            console.log(`⚠️ Auto-resolved: product_id ${item.variant_id} → variant_id ${fallbackVariant.variant_id}`);
+            resolvedVariantId = fallbackVariant.variant_id;
+            itemPrice = fallbackVariant.saleprice || fallbackVariant.regularprice || 0;
+          } else {
+            console.error(`❌ Cannot resolve variant_id ${item.variant_id}`);
+          }
+        }
+      }
+
+      const q = item.quantity || 1;
+      trueBackendTotal += itemPrice * q;
+
+      resolvedOrderItems.push({
+        catalogue_product_id: resolvedVariantId,
+        quantity: q,
+        is_combo: isCombo
+      });
+    }
+
+    // Mathematical Order Integrity Check
+    // ✅ FIX: Use DB-verified total instead of trusting client's claimed total
+    // This prevents false-positive rejections when WhatsApp bot sends different totals
+    const claimedProductTotal = Number(total_amount) - Number(shipping_amount || 0);
+    let correctedTotalAmount = Number(total_amount);
+
+    // If DB total is valid but claimed total is zero/wrong, AUTO-CORRECT instead of blocking
+    if (trueBackendTotal > 0 && claimedProductTotal <= 0) {
+      console.warn(`⚠️ AUTO-CORRECTING: Claimed product total was ₹${claimedProductTotal}, but DB total is ₹${trueBackendTotal}. Using DB total.`);
+      await logEvent("insert-new-order", "Price Auto-Corrected", `Claimed: ₹${claimedProductTotal} → DB: ₹${trueBackendTotal}`, "info");
+      correctedTotalAmount = trueBackendTotal + Number(shipping_amount || 0);
+    }
+    // Only block if both are zero (truly invalid order)
+    else if (trueBackendTotal <= 0 && claimedProductTotal <= 0) {
+      console.error(`🚫 ZERO PRICE BLOCKED. Both claimed and DB total are zero.`);
+      await logEvent("insert-new-order", "Pricing Failsafe Block", `Both claimed and DB total are zero`, "error");
+      return new Response(JSON.stringify({ error: "Order Validation Failed: All item prices are ₹0." }), { status: 400, headers: corsHeaders });
+    }
+    // Warn on mismatch but don't block — use DB total
+    else if (Math.abs(claimedProductTotal - trueBackendTotal) > 10) {
+      console.warn(`⚠️ PRICE MISMATCH AUTO-CORRECTED. Claimed: ₹${claimedProductTotal}, DB: ₹${trueBackendTotal}. Using DB total.`);
+      await logEvent("insert-new-order", "Price Mismatch Corrected", `Claimed: ₹${claimedProductTotal} → DB: ₹${trueBackendTotal}`, "info");
+      correctedTotalAmount = trueBackendTotal + Number(shipping_amount || 0);
+    }
+
     if (orderStatus === "failed" || orderStatus === "processing" || orderStatus === "confirmed" || orderStatus === "pending") {
       if (orderStatus !== "failed") {
 
@@ -87,6 +178,13 @@ serve(async (req) => {
               );
               const linkData = await linkResponse.json();
 
+              // 🎯 FIX: ALWAYS extract order_id from payment link, even if not yet paid.
+              // This ensures the webhook can find this order later via razorpay_order_id.
+              if (linkData.order_id) {
+                payment_order_id = linkData.order_id;
+                console.log(`📌 Extracted order_id from plink: ${payment_order_id}`);
+              }
+
               if (linkData.status === "paid" || (linkData.payments?.length && linkData.payments[0].status === "captured")) {
                 isPaid = true;
                 const paymentId = linkData.payments?.[0]?.payment_id || "";
@@ -98,7 +196,7 @@ serve(async (req) => {
                       { headers: { Authorization: authHeader, "Content-Type": "application/json" } }
                     );
                     const paymentDetails = await paymentResponse.json();
-                    payment_order_id = paymentDetails.order_id || "";
+                    payment_order_id = paymentDetails.order_id || payment_order_id || "";
                   } catch (payErr) {
                     console.error("⚠️ Failed to fetch payment details for plink:", payErr);
                     // Non-critical: we already have the payment ID
@@ -169,14 +267,14 @@ serve(async (req) => {
           // If the order is requested as "pending", we ALLOW it to be inserted as pending.
           // This fixes the bug where WhatsApp orders are rejected *before* the customer pays, dropping the whole order.
           if (orderStatus === "pending") {
-             console.log(`⚠️ Payment not yet captured for ${txId}, but orderStatus is pending. Allowing insertion as 'pending'.`);
-             await logEvent("insert-new-order", "Payment Validated (Pending)", `Pending: ${txId}`, "info", body.order_id);
+            console.log(`⚠️ Payment not yet captured for ${txId}, but orderStatus is pending. Allowing insertion as 'pending'.`);
+            await logEvent("insert-new-order", "Payment Validated (Pending)", `Pending: ${txId}`, "info", body.order_id);
           } else {
-             await logEvent("insert-new-order", "Payment Validation", `Payment not captured: ${txId}`, "error", body.order_id);
-             return new Response(
-               JSON.stringify({ error: "Payment not captured", payment_transaction_id: txId }),
-               { status: 400, headers: corsHeaders }
-             );
+            await logEvent("insert-new-order", "Payment Validation", `Payment not captured: ${txId}`, "error", body.order_id);
+            return new Response(
+              JSON.stringify({ error: "Payment not captured", payment_transaction_id: txId }),
+              { status: 400, headers: corsHeaders }
+            );
           }
         } else {
           await logEvent("insert-new-order", "Payment Validated", `Captured: ${resolved_payment_id || txId}`, "success", body.order_id);
@@ -240,13 +338,17 @@ serve(async (req) => {
       }
 
       // --- Order creation ---
-      // Store actual pay_ ID, set correct payment_status
+      // ✅ FIX: Store original order_XXX in razorpay_order_id, store pay_XXX in payment_transaction_id
+      // This ensures the webhook can find orders by EITHER field
+      const finalPaymentTxId = resolved_payment_id || (txId && !txId.startsWith('order_') ? txId : null);
+      const finalRazorpayOrderId = payment_order_id || (txId && txId.startsWith('order_') ? txId : null);
+
       const orderInsertPayload: any = {
         customer_id: newCustomerId,
-        total_amount,
+        total_amount: correctedTotalAmount,
         shipping_amount,
         payment_method,
-        payment_transaction_id: resolved_payment_id || txId || null,
+        payment_transaction_id: finalPaymentTxId || txId || null,
         payment_status: isPaid ? 'paid' : 'pending',
         source,
         order_note,
@@ -258,11 +360,9 @@ serve(async (req) => {
         name,
       };
 
-      // Only add razorpay_order_id if we have one (column may or may not exist)
-      if (payment_order_id) {
-        orderInsertPayload.razorpay_order_id = payment_order_id;
-      } else if (txId.startsWith('order_')) {
-        orderInsertPayload.razorpay_order_id = txId;
+      // Always store razorpay_order_id if available
+      if (finalRazorpayOrderId) {
+        orderInsertPayload.razorpay_order_id = finalRazorpayOrderId;
       }
 
       if (body.order_id) orderInsertPayload.order_id = body.order_id;
@@ -306,31 +406,14 @@ serve(async (req) => {
       }
       await logEvent("insert-new-order", "Order Created", `ID: ${orderData.order_id}`, "success", orderData.order_id);
 
-      // --- Determine is_combo for each item ---
-      const orderItems = await Promise.all(
-        items.map(async (item: any) => {
-          let isCombo = false;
-          try {
-            const { data: comboCheck } = await supabase
-              .from("combo")
-              .select("combo_id")
-              .eq("combo_id", item.variant_id)
-              .limit(1);
-            isCombo = !!(comboCheck && comboCheck.length > 0);
-          } catch (comboErr) {
-            console.error("Error checking combo:", comboErr);
-          }
-          return {
-            order_id: orderData.order_id,
-            catalogue_product_id: item.variant_id,
-            quantity: item.quantity,
-            is_combo: isCombo
-          };
-        })
-      );
+      // --- Attach Order IDs to Processed Order Items ---
+      const finalOrderItems = resolvedOrderItems.map(item => ({
+        ...item,
+        order_id: orderData.order_id
+      }));
 
       // --- Insert all order items ---
-      const { error: insertItemsErr } = await supabase.from("order_items").insert(orderItems);
+      const { error: insertItemsErr } = await supabase.from("order_items").insert(finalOrderItems);
       if (insertItemsErr) {
         await supabase.from("orders").delete().eq("order_id", orderData.order_id);
         if (!customer_id) {
@@ -339,7 +422,7 @@ serve(async (req) => {
         await logEvent("insert-new-order", "Order Items Failed", insertItemsErr, "error", orderData.order_id);
         return new Response(JSON.stringify({ error: "Failed to insert order_items", details: insertItemsErr }), { status: 500, headers: corsHeaders });
       }
-      await logEvent("insert-new-order", "Order Items Inserted", `${orderItems.length} items`, "success", orderData.order_id);
+      await logEvent("insert-new-order", "Order Items Inserted", `${finalOrderItems.length} items`, "success", orderData.order_id);
 
       // --- Shipment tracking ---
       if (orderStatus !== "failed") {
@@ -358,8 +441,9 @@ serve(async (req) => {
       }
 
       // --- Email notification (non-blocking) ---
+      let orderItemsData: any = null;
       try {
-        const { data: orderItemsData } = await supabase
+        const { data } = await supabase
           .from("order_items")
           .select(`
             quantity,
@@ -371,6 +455,8 @@ serve(async (req) => {
             )
           `)
           .eq("order_id", orderData.order_id);
+
+        orderItemsData = data;
 
         // Build items table rows
         let itemsTableRows = "";
@@ -488,6 +574,43 @@ serve(async (req) => {
       } catch (emailErr: any) {
         // Email failure must NEVER block order creation
         console.error("⚠️ Email failed (non-critical):", emailErr?.message || emailErr);
+      }
+
+      // --- Google Sheets Backup Webhook (Non-blocking) ---
+      try {
+        const GOOGLE_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwIR5IbmoZTB5d-3Lya-_EGBJGBHwVuyY-Z1ZQe0gwJX5E-7ABeFhg1yPef445V-la71g/exec";
+
+        let readableItemsString = "Unknown Items";
+        try {
+          // Attempt to build a beautiful human-readable string if the email data fetch succeeded
+          if (typeof orderItemsData !== 'undefined' && orderItemsData) {
+            readableItemsString = (orderItemsData as any[]).map((i: any) => {
+              const pv = i.product_variants;
+              return pv ? `${pv.variant_name} [${pv.sku}] (x${i.quantity})` : `Item ID: ${i.catalogue_product_id}`;
+            }).join(" | ");
+          } else {
+            // Fallback to raw DB format
+            readableItemsString = finalOrderItems.map((i: any) => `Variant: ${i.catalogue_product_id} (x${i.quantity})`).join(" | ");
+          }
+        } catch (e) { console.error("Could not map readable string", e); }
+
+        await fetch(GOOGLE_WEBHOOK_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain" }, // Bypass CORS preflight heavily enforced by Google Apps Script
+          body: JSON.stringify({
+            order_id: orderData.order_id,
+            customer_name: name || customer_name || "Guest",
+            mobile: contact_number || mobileNumber || "N/A",
+            amount: total_amount,
+            source: source || "WhatsApp",
+            status: orderStatus || "Pending",
+            payment_id: txId || payment_transaction_id || "N/A",
+            items: readableItemsString
+          })
+        });
+        await logEvent("insert-new-order", "Google Sheet Backup Fired", orderData.order_id, "success");
+      } catch (sheetsErr) {
+        console.error("⚠️ Google Sheets Webhook failed (non-critical):", sheetsErr);
       }
 
       return new Response(JSON.stringify({

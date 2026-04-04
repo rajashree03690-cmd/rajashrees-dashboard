@@ -77,7 +77,7 @@ serve(async (req) => {
                 if (!orderId && razorpayOrderId) {
                     console.log(`🔍 No order_id in notes. Looking up order by razorpay_order_id or payment_transaction_id: ${razorpayOrderId}`)
 
-                    // Try razorpay_order_id column first
+                    // Strategy 1: Try razorpay_order_id column
                     const { data: orderByRzpId } = await adminClient
                         .from('orders')
                         .select('order_id')
@@ -88,7 +88,7 @@ serve(async (req) => {
                         orderId = orderByRzpId.order_id
                         console.log(`✅ Found order by razorpay_order_id: ${orderId}`)
                     } else {
-                        // Fallback: WhatsApp bot stores Razorpay Order ID in payment_transaction_id
+                        // Strategy 2: WhatsApp bot may store order_XXX in payment_transaction_id
                         const { data: orderByTxId } = await adminClient
                             .from('orders')
                             .select('order_id')
@@ -97,25 +97,47 @@ serve(async (req) => {
 
                         if (orderByTxId) {
                             orderId = orderByTxId.order_id
-                            console.log(`✅ Found order by payment_transaction_id: ${orderId}`)
+                            console.log(`✅ Found order by payment_transaction_id (order_XXX): ${orderId}`)
                         }
                     }
                 }
 
+                // Strategy 3: If still not found, try looking up by pay_XXX in payment_transaction_id
+                // (insert-new-order may have already resolved the payment ID)
+                if (!orderId && paymentId) {
+                    const { data: orderByPayId } = await adminClient
+                        .from('orders')
+                        .select('order_id')
+                        .eq('payment_transaction_id', paymentId)
+                        .maybeSingle()
+
+                    if (orderByPayId) {
+                        orderId = orderByPayId.order_id
+                        console.log(`✅ Found order by payment_transaction_id (pay_XXX): ${orderId}`)
+                    }
+                }
+
                 if (!orderId) {
-                    console.warn('⚠️ payment.captured: could not find matching order, skipping. Payment:', paymentId, 'RazorpayOrder:', razorpayOrderId)
+                    console.warn('⚠️ payment.captured: could not find matching order after ALL strategies. Payment:', paymentId, 'RazorpayOrder:', razorpayOrderId)
                     break
                 }
 
-                // Update order payment status and replace the Razorpay Order ID with the actual Payment ID
+                // Update order: set payment_status, store pay_XXX, and preserve razorpay_order_id
+                const updatePayload: any = {
+                    payment_status: 'paid',
+                    payment_transaction_id: paymentId, // Store the actual pay_... ID
+                    order_status: 'processing',
+                    updated_at: new Date().toISOString(),
+                    total_amount: entity.amount / 100, // 🎯 FIX: Sync actual Razorpay captured amount (paise → rupees)
+                }
+                // Also store razorpay_order_id if not already set
+                if (razorpayOrderId) {
+                    updatePayload.razorpay_order_id = razorpayOrderId
+                }
+
                 const { error: updateError } = await adminClient
                     .from('orders')
-                    .update({
-                        payment_status: 'paid',
-                        payment_transaction_id: paymentId, // Store the actual pay_... ID
-                        order_status: 'processing',
-                        updated_at: new Date().toISOString(),
-                    })
+                    .update(updatePayload)
                     .eq('order_id', orderId)
 
                 if (updateError) {
