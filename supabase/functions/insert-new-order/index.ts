@@ -72,47 +72,45 @@ serve(async (req) => {
     // Safe reference to payment_transaction_id (could be empty/undefined/null)
     const txId = (payment_transaction_id || "").trim();
 
-    // --- Pricing & Zero-Price Failsafe Guardrail ---
-    // Recalculate true backend price directly from DB
-    let trueBackendTotal = 0;
+    // --- Build order items: validate variant existence, detect combos ---
+    // IMPORTANT: We trust the payload's prices (from WhatsApp bot / cart).
+    // We do NOT re-fetch prices from DB because that causes mismatches
+    // when product prices change between when the customer saw the price
+    // and when the order is saved.
     const resolvedOrderItems = [];
 
     for (const item of items) {
       let isCombo = false;
       let resolvedVariantId = item.variant_id;
-      let itemPrice = 0;
 
-      // 1. Check if it's a combo
+      // 1. Check if it's a combo (for is_combo flag only, NOT for price)
       try {
         const { data: comboCheck } = await supabase
           .from("combo")
-          .select("combo_id, saleprice, regularprice")
+          .select("combo_id")
           .eq("combo_id", item.variant_id)
           .limit(1);
         if (comboCheck && comboCheck.length > 0) {
           isCombo = true;
-          itemPrice = comboCheck[0].saleprice || comboCheck[0].regularprice || 0;
         }
       } catch (comboErr) {
         console.error("Error checking combo:", comboErr);
       }
 
-      // 2. If not a combo, check product_variants (and handle auto-resolve)
+      // 2. If not a combo, validate variant exists (and handle auto-resolve)
       if (!isCombo) {
         const { data: variantCheck } = await supabase
           .from("product_variants")
-          .select("variant_id, saleprice, regularprice")
+          .select("variant_id")
           .eq("variant_id", item.variant_id)
           .limit(1)
           .maybeSingle();
 
-        if (variantCheck) {
-          itemPrice = variantCheck.saleprice || variantCheck.regularprice || 0;
-        } else {
+        if (!variantCheck) {
           // Auto-resolve fallback: Check if the ID provided was actually a product_id
           const { data: fallbackVariant } = await supabase
             .from("product_variants")
-            .select("variant_id, saleprice, regularprice")
+            .select("variant_id")
             .eq("product_id", item.variant_id)
             .eq("is_Active", true)
             .limit(1)
@@ -121,7 +119,6 @@ serve(async (req) => {
           if (fallbackVariant) {
             console.log(`⚠️ Auto-resolved: product_id ${item.variant_id} → variant_id ${fallbackVariant.variant_id}`);
             resolvedVariantId = fallbackVariant.variant_id;
-            itemPrice = fallbackVariant.saleprice || fallbackVariant.regularprice || 0;
           } else {
             console.error(`❌ Cannot resolve variant_id ${item.variant_id}`);
           }
@@ -129,38 +126,22 @@ serve(async (req) => {
       }
 
       const q = item.quantity || 1;
-      trueBackendTotal += itemPrice * q;
-
       resolvedOrderItems.push({
         catalogue_product_id: resolvedVariantId,
         quantity: q,
-        is_combo: isCombo
+        is_combo: isCombo,
+        price: item.price || 0
       });
     }
 
-    // Mathematical Order Integrity Check
-    // ✅ FIX: Use DB-verified total instead of trusting client's claimed total
-    // This prevents false-positive rejections when WhatsApp bot sends different totals
-    const claimedProductTotal = Number(total_amount) - Number(shipping_amount || 0);
-    let correctedTotalAmount = Number(total_amount);
+    // Trust the payload total_amount — this is what the customer saw and paid
+    const correctedTotalAmount = Number(total_amount) || 0;
 
-    // If DB total is valid but claimed total is zero/wrong, AUTO-CORRECT instead of blocking
-    if (trueBackendTotal > 0 && claimedProductTotal <= 0) {
-      console.warn(`⚠️ AUTO-CORRECTING: Claimed product total was ₹${claimedProductTotal}, but DB total is ₹${trueBackendTotal}. Using DB total.`);
-      await logEvent("insert-new-order", "Price Auto-Corrected", `Claimed: ₹${claimedProductTotal} → DB: ₹${trueBackendTotal}`, "info");
-      correctedTotalAmount = trueBackendTotal + Number(shipping_amount || 0);
-    }
-    // Only block if both are zero (truly invalid order)
-    else if (trueBackendTotal <= 0 && claimedProductTotal <= 0) {
-      console.error(`🚫 ZERO PRICE BLOCKED. Both claimed and DB total are zero.`);
-      await logEvent("insert-new-order", "Pricing Failsafe Block", `Both claimed and DB total are zero`, "error");
-      return new Response(JSON.stringify({ error: "Order Validation Failed: All item prices are ₹0." }), { status: 400, headers: corsHeaders });
-    }
-    // Warn on mismatch but don't block — use DB total
-    else if (Math.abs(claimedProductTotal - trueBackendTotal) > 10) {
-      console.warn(`⚠️ PRICE MISMATCH AUTO-CORRECTED. Claimed: ₹${claimedProductTotal}, DB: ₹${trueBackendTotal}. Using DB total.`);
-      await logEvent("insert-new-order", "Price Mismatch Corrected", `Claimed: ₹${claimedProductTotal} → DB: ₹${trueBackendTotal}`, "info");
-      correctedTotalAmount = trueBackendTotal + Number(shipping_amount || 0);
+    // Only block if total is truly zero (invalid order)
+    if (correctedTotalAmount <= 0) {
+      console.error(`🚫 ZERO PRICE BLOCKED. total_amount is zero.`);
+      await logEvent("insert-new-order", "Pricing Failsafe Block", `total_amount is zero`, "error");
+      return new Response(JSON.stringify({ error: "Order Validation Failed: Total is ₹0." }), { status: 400, headers: corsHeaders });
     }
 
     if (orderStatus === "failed" || orderStatus === "processing" || orderStatus === "confirmed" || orderStatus === "pending") {

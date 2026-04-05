@@ -52,11 +52,13 @@ serve(async (req) => {
                             /₹\s*([\d]+(?:\.\d+)?)\s*\*\s*(\d+)\s*quantity\s*₹\s*([\d]+(?:\.\d+)?)/
                         );
                         if (matchDetails) {
+                            const unitPrice = parseFloat(matchDetails[1]);
                             quantity = parseInt(matchDetails[2], 10);
+                            parsedItems.push({ sku, quantity, price: unitPrice });
                             break;
                         }
                     }
-                    if (quantity) parsedItems.push({ sku, quantity });
+                    if (quantity && !parsedItems.some((i: any) => i.sku === sku)) parsedItems.push({ sku, quantity });
                 }
             }
 
@@ -84,12 +86,19 @@ serve(async (req) => {
 
                     const data = await resp.json();
                     if (data.length > 0) {
-                        transformedItems.push({
-                            variant_id: data[0].variant_id,
-                            quantity: item.quantity,
-                            price: data[0].saleprice || data[0].regularprice || 0,
-                            sku: data[0].sku
-                        });
+                        const variantId = Number(data[0].variant_id);
+                        const dbPrice = Number(data[0].saleprice || data[0].regularprice || 0);
+                        const finalPrice = item.price || dbPrice; // Prefer parsed price, fallback to DB
+                        if (variantId && !isNaN(variantId) && variantId > 0 && finalPrice > 0) {
+                            transformedItems.push({
+                                variant_id: variantId,
+                                quantity: item.quantity,
+                                price: finalPrice,
+                                sku: data[0].sku
+                            });
+                        } else {
+                            await logEvent("insert-whatsapp-order", "Invalid variant data", { sku: item.sku, variant_id: variantId, price: finalPrice }, "error");
+                        }
                     } else {
                         await logEvent("insert-whatsapp-order", "Variant Not Found", item.sku, "error");
                     }
