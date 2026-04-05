@@ -293,21 +293,32 @@ serve(async (req) => {
           await logEvent("insert-new-order", "Customer Created", `ID: ${customer_id}`, "success", body.order_id);
         }
       } else {
-        // No customer_id provided — look up by mobile_number first, then create if not found
-        let existingByMobile = null;
-        if (mobileNumber) {
-          const { data: foundCust } = await supabase
+        // No customer_id provided — look up by mobile_number OR email first
+        let existingCustId = null;
+
+        // Strategy 1: Lookup by mobile_number
+        if (!existingCustId && mobileNumber) {
+          const { data: foundByMobile } = await supabase
             .from("customers")
             .select("customer_id")
             .eq("mobile_number", String(mobileNumber))
             .maybeSingle();
-          existingByMobile = foundCust;
+          if (foundByMobile) existingCustId = foundByMobile.customer_id;
         }
 
-        if (existingByMobile) {
-          // Customer already exists — reuse their ID
-          newCustomerId = existingByMobile.customer_id;
-          console.log(`✅ Existing customer found by mobile: ${newCustomerId}`);
+        // Strategy 2: Lookup by email
+        if (!existingCustId && email) {
+          const { data: foundByEmail } = await supabase
+            .from("customers")
+            .select("customer_id")
+            .eq("email", String(email))
+            .maybeSingle();
+          if (foundByEmail) existingCustId = foundByEmail.customer_id;
+        }
+
+        if (existingCustId) {
+          newCustomerId = existingCustId;
+          console.log(`✅ Existing customer found: ${newCustomerId}`);
           await logEvent("insert-new-order", "Existing Customer Found", `ID: ${newCustomerId}`, "success");
         } else {
           // No existing customer — create new
@@ -315,10 +326,10 @@ serve(async (req) => {
             .from("customers")
             .insert([{
               full_name: customer_name,
-              mobile_number: mobileNumber,
+              mobile_number: mobileNumber || null,
               address: address,
               state: state,
-              email: email,
+              email: email || null,
               pincode: pincode || null
             }])
             .select("customer_id")
