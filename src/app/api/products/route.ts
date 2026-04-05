@@ -71,7 +71,7 @@ export async function GET(req: Request) {
             const sale = activeVariant?.saleprice || activeVariant?.regularprice || 0;
             const reg = activeVariant?.regularprice || sale || 0;
             const has_pricing = !!(sale || reg);
-            
+
             if (!has_pricing) continue;
 
             finalData.push({
@@ -114,7 +114,7 @@ export async function GET(req: Request) {
         }
 
         let estimatedTotal = finalData.length;
-        
+
         if (hasMore) {
             if (search) {
                 // Count exactly for filtered results (Fresh query to avoid mutated limits)
@@ -130,17 +130,14 @@ export async function GET(req: Request) {
                 const { count } = await countQuery;
                 estimatedTotal = count || Math.max((page * limitCount) + 1, finalData.length);
             } else {
-                // Unfiltered total - use edge function for speed
-                estimatedTotal = 7164; // Default fallback sync
+                // Unfiltered total - fast direct count query
                 try {
-                    const statsResponse = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/product-stats`, {
-                        headers: { 'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY || '' }
-                    });
-                    if (statsResponse.ok) {
-                        const stats = await statsResponse.json();
-                        if (stats.totalProducts) estimatedTotal = stats.totalProducts;
-                    }
-                } catch (e) { console.error('Stats fetch failed silently:', e); }
+                    const { count } = await supabase
+                        .from('master_product')
+                        .select('product_id', { count: 'exact', head: true })
+                        .eq('is_Active', true);
+                    estimatedTotal = count || estimatedTotal;
+                } catch (e) { console.error('Count query failed:', e); }
             }
         } else {
             estimatedTotal = ((page - 1) * limitCount) + finalData.length;

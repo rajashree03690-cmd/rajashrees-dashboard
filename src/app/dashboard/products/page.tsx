@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { productsService } from '@/modules/products/services/products.service';
 import type { ProductVariant } from '@/types/products';
@@ -23,7 +23,9 @@ export default function ProductsPage() {
     const [variants, setVariants] = useState<ProductVariant[]>([]);
     const [loading, setLoading] = useState(true);
     const [loadingStats, setLoadingStats] = useState(true);
+    const [searchInput, setSearchInput] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
+    const searchTimerRef = useRef<NodeJS.Timeout | null>(null);
     const [pageSize, setPageSize] = useState(10);
     const [currentPage, setCurrentPage] = useState(0);
     const pageSizeOptions = [10, 20, 50, 100];
@@ -159,13 +161,16 @@ export default function ProductsPage() {
         loadStats();
     }, []); // Load stats once on mount  // ✅ Re-fetch when search changes
 
-    // Reset to page 1 when search query changes
+    // Debounced search: wait 500ms after user stops typing
     useEffect(() => {
-        if (searchQuery) {
+        if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+        searchTimerRef.current = setTimeout(() => {
+            setSearchQuery(searchInput);
             setServerPage(1);
             setCurrentPage(0);
-        }
-    }, [searchQuery]);
+        }, 500);
+        return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
+    }, [searchInput]);
 
 
     // Client-side filtering for partial matching on Name, SKU, Category, and variant SKUs
@@ -341,10 +346,9 @@ export default function ProductsPage() {
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                                 <Input
                                     placeholder="Search by SKU, product name, variant, category, color, size..."
-                                    value={searchQuery}
+                                    value={searchInput}
                                     onChange={(e) => {
-                                        setSearchQuery(e.target.value);
-                                        setCurrentPage(0);
+                                        setSearchInput(e.target.value);
                                     }}
                                     className="pl-10"
                                 />
@@ -354,6 +358,7 @@ export default function ProductsPage() {
                         <Button
                             variant="ghost"
                             onClick={() => {
+                                setSearchInput('');
                                 setSearchQuery('');
                                 setCurrentPage(0);
                             }}
