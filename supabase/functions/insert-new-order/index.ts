@@ -294,28 +294,47 @@ serve(async (req) => {
           await logEvent("insert-new-order", "Customer Created", `ID: ${customer_id}`, "success", body.order_id);
         }
       } else {
-        const { data: custData, error: custErr } = await supabase
-          .from("customers")
-          .insert([{
-            full_name: customer_name,
-            mobile_number: mobileNumber,
-            address: address,
-            state: state,
-            email: email,
-            pincode: pincode || null
-          }])
-          .select("customer_id")
-          .single();
-
-        if (custErr || !custData) {
-          await logEvent("insert-new-order", "Customer Creation", custErr, "error", body.order_id);
-          return new Response(
-            JSON.stringify({ error: "Failed to create customer", details: custErr }),
-            { status: 500, headers: corsHeaders }
-          );
+        // No customer_id provided — look up by mobile_number first, then create if not found
+        let existingByMobile = null;
+        if (mobileNumber) {
+          const { data: foundCust } = await supabase
+            .from("customers")
+            .select("customer_id")
+            .eq("mobile_number", String(mobileNumber))
+            .maybeSingle();
+          existingByMobile = foundCust;
         }
-        newCustomerId = custData.customer_id;
-        await logEvent("insert-new-order", "Guest Customer Created", `ID: ${newCustomerId}`, "success", body.order_id);
+
+        if (existingByMobile) {
+          // Customer already exists — reuse their ID
+          newCustomerId = existingByMobile.customer_id;
+          console.log(`✅ Existing customer found by mobile: ${newCustomerId}`);
+          await logEvent("insert-new-order", "Existing Customer Found", `ID: ${newCustomerId}`, "success");
+        } else {
+          // No existing customer — create new
+          const { data: custData, error: custErr } = await supabase
+            .from("customers")
+            .insert([{
+              full_name: customer_name,
+              mobile_number: mobileNumber,
+              address: address,
+              state: state,
+              email: email,
+              pincode: pincode || null
+            }])
+            .select("customer_id")
+            .single();
+
+          if (custErr || !custData) {
+            await logEvent("insert-new-order", "Customer Creation", custErr, "error", body.order_id);
+            return new Response(
+              JSON.stringify({ error: "Failed to create customer", details: custErr }),
+              { status: 500, headers: corsHeaders }
+            );
+          }
+          newCustomerId = custData.customer_id;
+          await logEvent("insert-new-order", "Guest Customer Created", `ID: ${newCustomerId}`, "success", body.order_id);
+        }
       }
 
       // --- Order creation ---
