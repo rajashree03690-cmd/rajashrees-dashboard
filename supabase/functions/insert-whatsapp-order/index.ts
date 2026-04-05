@@ -64,46 +64,89 @@ serve(async (req) => {
 
             await logEvent("insert-whatsapp-order", "Parsed SKUs", parsedItems, "success");
 
-            // --- Fetch variant_id and price for each SKU ---
+            // --- Smart SKU Resolution (same 4-priority logic as getproductforwhatsapp) ---
             for (const item of parsedItems) {
                 try {
-                    const resp = await fetch(
-                        `${Deno.env.get("SUPABASE_URL")}/rest/v1/product_variants?select=variant_id,saleprice,regularprice,sku&sku=eq.${item.sku}`,
-                        {
-                            method: "GET",
-                            headers: {
-                                apikey: Deno.env.get("SUPABASE_ANON_KEY")!,
-                                Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
-                            },
-                        },
-                    );
+                    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+                    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+                    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+                    const headers = {
+                        apikey: anonKey,
+                        Authorization: `Bearer ${serviceKey}`,
+                    };
 
-                    if (!resp.ok) {
-                        const errText = await resp.text();
-                        await logEvent("insert-whatsapp-order", `Fetch Variant for SKU ${item.sku}`, errText, "error");
-                        continue;
+                    const originalCode = String(item.sku || '').trim();
+                    const normalizedCode = originalCode.replace(/^RFP[-\s]*/i, '');
+                    const numMatch = normalizedCode.match(/\d+$/);
+                    const numericCode = numMatch ? numMatch[0] : null;
+
+                    // Helper: try a single SKU query
+                    async function trySkuMatch(table: string, filter: string): Promise<any | null> {
+                        const resp = await fetch(
+                            `${supabaseUrl}/rest/v1/${table}?select=variant_id,saleprice,regularprice,sku&${filter}&limit=1`,
+                            { method: "GET", headers }
+                        );
+                        if (!resp.ok) return null;
+                        const data = await resp.json();
+                        return data.length > 0 ? data[0] : null;
                     }
 
-                    const data = await resp.json();
-                    if (data.length > 0) {
-                        const variantId = Number(data[0].variant_id);
-                        const dbPrice = Number(data[0].saleprice || data[0].regularprice || 0);
-                        const finalPrice = item.price || dbPrice; // Prefer parsed price, fallback to DB
-                        if (variantId && !isNaN(variantId) && variantId > 0 && finalPrice > 0) {
+                    // Also try combo table
+                    async function tryComboMatch(filter: string): Promise<any | null> {
+                        const resp = await fetch(
+                            `${supabaseUrl}/rest/v1/combo?select=combo_id,saleprice,regularprice,sku&${filter}&limit=1`,
+                            { method: "GET", headers }
+                        );
+                        if (!resp.ok) return null;
+                        const data = await resp.json();
+                        return data.length > 0 ? data[0] : null;
+                    }
+
+                    let matched: any = null;
+                    let isComboItem = false;
+
+                    // Priority 1: Exact match on product_variants
+                    matched = await trySkuMatch("product_variants", `sku=eq.${originalCode}`);
+                    // Priority 2: RFP- prefix
+                    if (!matched) matched = await trySkuMatch("product_variants", `sku=eq.RFP-${normalizedCode}`);
+                    // Priority 3: Suffix ilike
+                    if (!matched) matched = await trySkuMatch("product_variants", `sku=ilike.*${normalizedCode}`);
+                    // Priority 4: Digits-only fallback (min 3 digits)
+                    if (!matched && numericCode && numericCode.length >= 3) {
+                        matched = await trySkuMatch("product_variants", `sku=ilike.*${numericCode}`);
+                    }
+
+                    // Priority 5: Try combo table
+                    if (!matched) {
+                        let comboMatch = await tryComboMatch(`sku=eq.${originalCode}`);
+                        if (!comboMatch) comboMatch = await tryComboMatch(`sku=ilike.*${normalizedCode}`);
+                        if (comboMatch) {
+                            matched = { variant_id: comboMatch.combo_id, saleprice: comboMatch.saleprice, regularprice: comboMatch.regularprice, sku: comboMatch.sku };
+                            isComboItem = true;
+                        }
+                    }
+
+                    if (matched) {
+                        const variantId = Number(matched.variant_id);
+                        const dbPrice = Number(matched.saleprice || matched.regularprice || 0);
+                        const finalPrice = item.price || dbPrice;
+                        if (variantId && !isNaN(variantId) && variantId > 0) {
                             transformedItems.push({
                                 variant_id: variantId,
                                 quantity: item.quantity,
                                 price: finalPrice,
-                                sku: data[0].sku
+                                sku: matched.sku,
+                                is_combo: isComboItem
                             });
+                            await logEvent("insert-whatsapp-order", `Resolved SKU ${originalCode}`, { resolvedSku: matched.sku, variant_id: variantId, price: finalPrice, is_combo: isComboItem }, "success");
                         } else {
                             await logEvent("insert-whatsapp-order", "Invalid variant data", { sku: item.sku, variant_id: variantId, price: finalPrice }, "error");
                         }
                     } else {
-                        await logEvent("insert-whatsapp-order", "Variant Not Found", item.sku, "error");
+                        await logEvent("insert-whatsapp-order", "SKU Not Found (all strategies failed)", { sku: originalCode, normalized: normalizedCode }, "error");
                     }
                 } catch (err) {
-                    await logEvent("insert-whatsapp-order", `Exception Fetching SKU ${item.sku}`, err, "error");
+                    await logEvent("insert-whatsapp-order", `Exception Resolving SKU ${item.sku}`, err, "error");
                 }
             }
         }

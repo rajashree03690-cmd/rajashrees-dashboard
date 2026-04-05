@@ -97,7 +97,7 @@ serve(async (req) => {
         console.error("Error checking combo:", comboErr);
       }
 
-      // 2. If not a combo, validate variant exists (and handle auto-resolve)
+      // 2. If not a combo, validate variant exists
       if (!isCombo) {
         const { data: variantCheck } = await supabase
           .from("product_variants")
@@ -107,21 +107,8 @@ serve(async (req) => {
           .maybeSingle();
 
         if (!variantCheck) {
-          // Auto-resolve fallback: Check if the ID provided was actually a product_id
-          const { data: fallbackVariant } = await supabase
-            .from("product_variants")
-            .select("variant_id")
-            .eq("product_id", item.variant_id)
-            .eq("is_Active", true)
-            .limit(1)
-            .maybeSingle();
-
-          if (fallbackVariant) {
-            console.log(`⚠️ Auto-resolved: product_id ${item.variant_id} → variant_id ${fallbackVariant.variant_id}`);
-            resolvedVariantId = fallbackVariant.variant_id;
-          } else {
-            console.error(`❌ Cannot resolve variant_id ${item.variant_id}`);
-          }
+          console.error(`❌ Invalid variant_id ${item.variant_id} — skipping (no auto-resolve to prevent wrong product mapping)`);
+          continue; // Skip this item entirely — do NOT guess
         }
       }
 
