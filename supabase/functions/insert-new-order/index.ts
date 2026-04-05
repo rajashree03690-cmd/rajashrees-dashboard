@@ -129,8 +129,7 @@ serve(async (req) => {
       resolvedOrderItems.push({
         catalogue_product_id: resolvedVariantId,
         quantity: q,
-        is_combo: isCombo,
-        price: item.price || 0
+        is_combo: isCombo
       });
     }
 
