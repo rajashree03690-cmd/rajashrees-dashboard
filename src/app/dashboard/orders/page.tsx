@@ -945,7 +945,7 @@ export default function OrdersPage() {
                                                                 // Razorpay IDs usually start with 'pay_' or 'order_' but order_ shouldn't be the final payment ID.
                                                                 // If it's a 'pay_' id, link to razorpay
                                                                 const isRazorpay = txId.startsWith('pay_');
-                                                                
+
                                                                 if (isRazorpay) {
                                                                     return (
                                                                         <a
@@ -1065,7 +1065,7 @@ export default function OrdersPage() {
                                         <div key={idx} className="border rounded p-3 text-sm">
                                             <p><strong>SKU:</strong> {item.product_variants?.sku || 'N/A'}</p>
                                             <p><strong>Variant:</strong> {item.product_variants?.variant_name || 'N/A'}</p>
-                                            <p><strong>Price:</strong> ₹{item.product_variants?.saleprice || 0}</p>
+                                            <p><strong>Price:</strong> ₹{item.price || item.product_variants?.saleprice || 0}</p>
                                             <p><strong>Quantity:</strong> {item.quantity}</p>
                                         </div>
                                     ))}
