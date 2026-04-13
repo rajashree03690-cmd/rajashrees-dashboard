@@ -294,7 +294,26 @@ serve(async (req) => {
         // All orders are online payments (NO COD)
         const isOnlinePayment = true
 
-        // 7. Create Order in database
+        // 7. Build a complete shipping address from component fields
+        const buildShippingAddress = (addr: any): string => {
+            const parts = [
+                addr.door_no,
+                addr.street,
+                addr.landmark,
+                addr.district,
+                addr.city
+            ].filter(Boolean).map((p: string) => p.trim()).filter((p: string) => p.length > 0);
+
+            // If components exist, join them
+            if (parts.length > 0) return parts.join(', ');
+
+            // Fallback to the generic 'address' field (or address_line1)
+            return addr.address || addr.address_line1 || '';
+        }
+
+        const fullShippingAddress = buildShippingAddress(delivery_address);
+
+        // Create Order in database
         const orderInsertPayload: any = {
             order_id: order_id,
             customer_id: customer.customer_id,
@@ -303,12 +322,12 @@ serve(async (req) => {
             payment_method: payment_method,
             payment_status: 'awaiting_payment',
             order_status: 'pending_payment',
-            shipping_address: delivery_address.address,
+            shipping_address: fullShippingAddress,
             shipping_state: delivery_address.state,
             shipping_pincode: delivery_address.pincode,
             contact_number: formatPhoneWithCountryCode(delivery_address.mobile, delivery_address.country),
             name: delivery_address.full_name,
-            source: source || 'WEB',  // Use source from request (WhatsApp or WEB)
+            source: source || 'WEB',
             razorpay_order_id: razorpayOrder ? razorpayOrder.id : null
         }
 
@@ -316,6 +335,36 @@ serve(async (req) => {
         if (user?.id) {
             orderInsertPayload.auth_id = user.id
         }
+
+        // 7b. Also update the customer record with the latest address data
+        // (so the dashboard customer screen and invoice show correct info)
+        if (customer.customer_id) {
+            const customerUpdateData: any = {
+                updated_at: new Date().toISOString()
+            };
+            if (delivery_address.full_name) customerUpdateData.full_name = delivery_address.full_name;
+            if (delivery_address.mobile) customerUpdateData.mobile_number = delivery_address.mobile.replace(/[^0-9]/g, '');
+            if (delivery_address.alternative_mobile) customerUpdateData.alternative_mobile = delivery_address.alternative_mobile;
+            if (fullShippingAddress) customerUpdateData.address = fullShippingAddress;
+            if (delivery_address.door_no) customerUpdateData.door_no = delivery_address.door_no;
+            if (delivery_address.street) customerUpdateData.street = delivery_address.street;
+            if (delivery_address.landmark) customerUpdateData.landmark = delivery_address.landmark;
+            if (delivery_address.city) customerUpdateData.city = delivery_address.city;
+            if (delivery_address.district) customerUpdateData.district = delivery_address.district;
+            if (delivery_address.state) customerUpdateData.state = delivery_address.state;
+            if (delivery_address.pincode) customerUpdateData.pincode = delivery_address.pincode;
+
+            try {
+                await adminClient
+                    .from('customers')
+                    .update(customerUpdateData)
+                    .eq('customer_id', customer.customer_id);
+                console.log('✅ Customer record updated with latest address');
+            } catch (custUpdateErr) {
+                console.warn('⚠️ Customer address update failed (non-critical):', custUpdateErr);
+            }
+        }
+
 
         const { data: order, error: oError } = await adminClient
             .from('orders')
