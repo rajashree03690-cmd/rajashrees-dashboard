@@ -10,7 +10,7 @@ export interface Coupon {
     usage_count: number;
     starts_at: string;
     expires_at: string;
-    is_active: boolean;
+    is_Active: boolean;
     created_at: string;
     updated_at: string;
 }
@@ -26,7 +26,7 @@ export interface Affiliate {
         ifsc_code?: string;
         account_holder_name?: string;
     };
-    is_active: boolean;
+    is_Active: boolean;
     created_at: string;
     updated_at: string;
 }

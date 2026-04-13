@@ -5,7 +5,7 @@ export interface Combo {
     combo_id: number;
     combo_name: string;
     combo_price: number;
-    is_active: boolean;
+    is_Active: boolean;
     created_at: string;
     combo_items?: ComboItem[];
 }
@@ -106,7 +106,7 @@ export async function toggleComboStatus(
     try {
         const { error } = await supabase
             .from('combo')
-            .update({ is_active: isActive })
+            .update({ is_Active: isActive })
             .eq('combo_id', comboId);
 
         if (error) throw error;

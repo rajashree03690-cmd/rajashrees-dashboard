@@ -115,6 +115,8 @@ serve(async (req) => {
             subcategory_id: subcategoryId,
             category_id: categoryId,
             image_url: imageUrl,
+            image_2_url: image2Url,
+            image_3_url: image3Url,
             "is_Active": body.is_active ?? true,
             created_at: new Date().toISOString(),
         };
@@ -218,7 +220,9 @@ serve(async (req) => {
             length: variant.length || null,
             size: variant.size || null,
             color: variant.color || null,
-            image_url: variant.image_url || null,
+            image_url: variant.image_url || imageUrl || null,
+            image_2_url: variant.image_2_url || image2Url || null,
+            image_3_url: variant.image_3_url || image3Url || null,
             is_variant: isVariantFlag,
             "is_Active": true,
         });

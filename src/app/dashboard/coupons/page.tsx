@@ -64,7 +64,7 @@ export default function CouponsPage() {
             usage_limit: usageLimit ? parseInt(usageLimit) : null,
             starts_at: new Date(startsAt).toISOString(),
             expires_at: new Date(expiresAt).toISOString(),
-            is_active: true,
+            is_Active: true,
         };
 
         if (editingCoupon) {
@@ -108,12 +108,12 @@ export default function CouponsPage() {
     };
 
     const toggleActive = async (coupon: Coupon) => {
-        await marketingService.updateCoupon(coupon.id, { is_active: !coupon.is_active });
+        await marketingService.updateCoupon(coupon.id, { is_Active: !coupon.is_Active });
         loadCoupons();
     };
 
     const getCouponStatus = (coupon: Coupon) => {
-        if (!coupon.is_active) return { label: 'Inactive', color: 'bg-gray-100 text-gray-800' };
+        if (!coupon.is_Active) return { label: 'Inactive', color: 'bg-gray-100 text-gray-800' };
         const now = new Date();
         const expires = new Date(coupon.expires_at);
         if (now > expires) return { label: 'Expired', color: 'bg-red-100 text-red-800' };
@@ -149,7 +149,7 @@ export default function CouponsPage() {
                     <CardContent className="p-4">
                         <div className="text-sm text-gray-600">Active</div>
                         <div className="text-2xl font-bold text-green-600">
-                            {coupons.filter(c => c.is_active && new Date(c.expires_at) > new Date()).length}
+                            {coupons.filter(c => c.is_Active && new Date(c.expires_at) > new Date()).length}
                         </div>
                     </CardContent>
                 </Card>
@@ -225,7 +225,7 @@ export default function CouponsPage() {
                                                         <Edit className="h-4 w-4" />
                                                     </Button>
                                                     <Button size="sm" variant="ghost" onClick={() => toggleActive(coupon)}>
-                                                        {coupon.is_active ? '🔴' : '🟢'}
+                                                        {coupon.is_Active ? '🔴' : '🟢'}
                                                     </Button>
                                                     <Button size="sm" variant="ghost" onClick={() => handleDelete(coupon.id)} className="text-red-600">
                                                         <Trash2 className="h-4 w-4" />

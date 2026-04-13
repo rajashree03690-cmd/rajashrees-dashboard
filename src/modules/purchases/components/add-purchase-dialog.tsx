@@ -209,7 +209,7 @@ export function AddPurchaseDialog({ open, onOpenChange, onSuccess }: AddPurchase
                         >
                             <option value="">Select Vendor</option>
                             {vendors
-                                .filter(v => v.is_active !== false)
+                                .filter(v => v.is_Active !== false)
                                 .map(v => (
                                     <option key={v.vendor_id} value={v.vendor_id}>
                                         {v.name}

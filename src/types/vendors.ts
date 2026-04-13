@@ -13,7 +13,7 @@ export interface Vendor {
     ifsc?: string;
     pan_number?: string;
     notes?: string;
-    is_active?: boolean;
+    is_Active?: boolean;
     created_at?: string;
     updated_at?: string;
 }

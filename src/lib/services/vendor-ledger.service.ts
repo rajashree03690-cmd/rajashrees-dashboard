@@ -188,7 +188,7 @@ class VendorLedgerService {
                         'Authorization': `Bearer ${getSupabaseAnonKey()}`,
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ vendor_id: vendorId, is_active: isActive }),
+                    body: JSON.stringify({ vendor_id: vendorId, is_Active: isActive }),
                 }
             );
 

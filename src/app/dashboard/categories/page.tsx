@@ -17,7 +17,7 @@ import { toast } from 'sonner';
 interface Category {
     id: number;
     name: string;
-    is_active?: boolean;
+    is_Active?: boolean;
     image_url?: string;
 }
 
@@ -25,7 +25,7 @@ interface Subcategory {
     subcategory_id: number;
     name: string;
     category_id: number;
-    is_active?: boolean;
+    is_Active?: boolean;
     categories?: { id: number; name: string };
 }
 
@@ -183,15 +183,15 @@ export default function CategoriesPage() {
     };
 
     const toggleCategoryActive = async (cat: Category) => {
-        const newStatus = !(cat.is_active ?? true);
+        const newStatus = !(cat.is_Active ?? true);
         try {
             await fetch('/api/categories', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: cat.id, is_active: newStatus }),
+                body: JSON.stringify({ id: cat.id, is_Active: newStatus }),
             });
             setCategories(prev =>
-                prev.map(c => c.id === cat.id ? { ...c, is_active: newStatus } : c)
+                prev.map(c => c.id === cat.id ? { ...c, is_Active: newStatus } : c)
             );
         } catch (err) {
             console.error('Error toggling category:', err);
@@ -244,16 +244,16 @@ export default function CategoriesPage() {
     };
 
     const toggleSubcategoryActive = async (sub: Subcategory) => {
-        const newStatus = !(sub.is_active ?? true);
+        const newStatus = !(sub.is_Active ?? true);
         try {
             await fetch('/api/subcategories', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ subcategory_id: sub.subcategory_id, is_active: newStatus }),
+                body: JSON.stringify({ subcategory_id: sub.subcategory_id, is_Active: newStatus }),
             });
             setSubcategories(prev =>
                 prev.map(s => s.subcategory_id === sub.subcategory_id
-                    ? { ...s, is_active: newStatus }
+                    ? { ...s, is_Active: newStatus }
                     : s)
             );
         } catch (err) {
@@ -322,7 +322,7 @@ export default function CategoriesPage() {
                             <div>
                                 <p className="text-sm text-gray-600">Active Categories</p>
                                 <p className="text-2xl font-bold text-green-600">
-                                    {categories.filter(c => c.is_active !== false).length}
+                                    {categories.filter(c => c.is_Active !== false).length}
                                 </p>
                             </div>
                             <CheckCircle className="h-8 w-8 text-green-600" />
@@ -383,7 +383,7 @@ export default function CategoriesPage() {
                         ) : (
                             <div className="space-y-2">
                                 {filteredCategories.map((cat) => {
-                                    const isActive = cat.is_active !== false;
+                                    const isActive = cat.is_Active !== false;
                                     const isSelected = selectedCategory?.id === cat.id;
                                     return (
                                         <div
@@ -466,7 +466,7 @@ export default function CategoriesPage() {
                         ) : (
                             <div className="space-y-2">
                                 {subcategories.map((sub) => {
-                                    const isActive = sub.is_active !== false;
+                                    const isActive = sub.is_Active !== false;
                                     const parentName = sub.categories?.name || categories.find(c => c.id === sub.category_id)?.name || '-';
                                     return (
                                         <div
@@ -610,7 +610,7 @@ export default function CategoriesPage() {
                                 className="w-full border rounded-md px-3 py-2 text-sm"
                             >
                                 <option value="">Select a category</option>
-                                {categories.filter(c => c.is_active !== false).map(cat => (
+                                {categories.filter(c => c.is_Active !== false).map(cat => (
                                     <option key={cat.id} value={cat.id}>{cat.name}</option>
                                 ))}
                             </select>

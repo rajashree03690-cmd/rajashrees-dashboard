@@ -173,8 +173,8 @@ export default function AffiliatesPage() {
                                             <td className="p-3 font-semibold text-green-600">₹{affiliate.total_earnings.toFixed(2)}</td>
                                             <td className="p-3">{referralCount} orders</td>
                                             <td className="p-3">
-                                                <span className={`px-2 py-1 rounded text-xs font-medium ${affiliate.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                                                    {affiliate.is_active ? 'Active' : 'Inactive'}
+                                                <span className={`px-2 py-1 rounded text-xs font-medium ${affiliate.is_Active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                                                    {affiliate.is_Active ? 'Active' : 'Inactive'}
                                                 </span>
                                             </td>
                                             <td className="p-3">

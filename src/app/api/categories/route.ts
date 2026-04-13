@@ -56,7 +56,7 @@ export async function POST(req: Request) {
 export async function PUT(req: Request) {
     try {
         const body = await req.json();
-        const { id, name, is_active, image_url } = body;
+        const { id, name, is_Active, image_url } = body;
 
         if (!id) {
             return NextResponse.json({ error: 'Category ID is required' }, { status: 400 });
@@ -64,7 +64,7 @@ export async function PUT(req: Request) {
 
         const updateData: any = {};
         if (name !== undefined) updateData.name = name.trim();
-        if (is_active !== undefined) updateData.is_active = is_active;
+        if (is_Active !== undefined) updateData.is_Active = is_Active;
         if (image_url !== undefined) updateData.image_url = image_url;
 
         const { data, error } = await supabase

@@ -62,7 +62,7 @@ export async function POST(req: Request) {
 export async function PUT(req: Request) {
     try {
         const body = await req.json();
-        const { subcategory_id, name, category_id, is_active } = body;
+        const { subcategory_id, name, category_id, is_Active } = body;
 
         if (!subcategory_id) {
             return NextResponse.json({ error: 'Subcategory ID is required' }, { status: 400 });
@@ -71,7 +71,7 @@ export async function PUT(req: Request) {
         const updateData: any = {};
         if (name !== undefined) updateData.name = name.trim();
         if (category_id !== undefined) updateData.category_id = category_id;
-        if (is_active !== undefined) updateData.is_active = is_active;
+        if (is_Active !== undefined) updateData.is_Active = is_Active;
 
         const { data, error } = await supabase
             .from('subcategories')

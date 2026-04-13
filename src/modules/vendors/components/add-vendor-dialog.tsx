@@ -58,7 +58,7 @@ export function AddVendorDialog({ open, onOpenChange, onSuccess, initialVendor }
                 ifsc: ifsc || undefined,
                 pan_number: panNumber || undefined,
                 notes: notes || undefined,
-                is_active: true,
+                is_Active: true,
             };
 
             const result = isEditMode

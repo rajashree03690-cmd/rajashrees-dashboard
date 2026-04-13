@@ -28,7 +28,7 @@ export function useRequireRole(
         }
 
         // User inactive - redirect to login
-        if (!user.is_active) {
+        if (!user.is_Active) {
             router.push('/login?error=inactive');
             return;
         }

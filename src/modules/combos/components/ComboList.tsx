@@ -63,7 +63,7 @@ export default function ComboList({ onCreate, onEdit }: ComboListProps) {
         combo.sku?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    const activeCombos = combos.filter(c => c.is_active).length;
+    const activeCombos = combos.filter(c => c.is_Active).length;
 
     if (loading) {
         return (
@@ -218,12 +218,12 @@ export default function ComboList({ onCreate, onEdit }: ComboListProps) {
                                             <Badge
                                                 variant="outline"
                                                 className={
-                                                    combo.is_active
+                                                    combo.is_Active
                                                         ? 'bg-green-50 text-green-700 border-green-200'
                                                         : 'bg-red-50 text-red-700 border-red-200'
                                                 }
                                             >
-                                                {combo.is_active ? 'Active' : 'Inactive'}
+                                                {combo.is_Active ? 'Active' : 'Inactive'}
                                             </Badge>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -237,7 +237,7 @@ export default function ComboList({ onCreate, onEdit }: ComboListProps) {
                                                     <Edit2 className="h-3 w-3" />
                                                     Edit
                                                 </Button>
-                                                {combo.is_active ? (
+                                                {combo.is_Active ? (
                                                     <Button
                                                         variant="outline"
                                                         size="sm"

@@ -168,7 +168,7 @@ export default function DelhiveryIntegrationPage() {
             const { data: vendorData } = await supabase
                 .from('vendor')
                 .select('vendor_id, name, address, contact_number, contact_person, email')
-                .eq('is_active', true)
+                .eq('is_Active', true)
                 .order('name');
             setVendors(vendorData || []);
 

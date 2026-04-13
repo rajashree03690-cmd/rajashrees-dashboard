@@ -42,7 +42,9 @@ serve(async (req) => {
                     regularprice,
                     stock,
                     sku,
-                    image_url
+                    image_url,
+                    image_2_url,
+                    image_3_url
                 )
             `)
             .eq('product_id', product_id)

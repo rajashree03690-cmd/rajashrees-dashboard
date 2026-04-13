@@ -78,9 +78,10 @@ serve(async (req) => {
                 size: variant.size ?? null,
                 color: variant.color ?? null,
                 image_url: variant.image_url ?? body.image_url, // Default to product image if missing
+                image_2_url: variant.image_2_url ?? body.image_2_url ?? null,
+                image_3_url: variant.image_3_url ?? body.image_3_url ?? null,
                 is_variant: body.has_variant,
                 is_Active: variant.is_Active !== undefined ? variant.is_Active : true,
-                // created_at?
             }));
 
             // Filter out variants without IDs for insert, separate updates?

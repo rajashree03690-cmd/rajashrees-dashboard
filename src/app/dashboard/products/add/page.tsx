@@ -432,7 +432,7 @@ export default function AddProductPage() {
                 category_id: parseInt(category),
                 subcategory_id: parseInt(subcategory),
                 sku,
-                is_active: isActive,
+                is_Active: isActive,
                 has_variant: hasVariants,
                 images: images.map(img => img.url),
                 variants: hasVariants ? variantSizes.filter(v => v.enabled).map(v => ({

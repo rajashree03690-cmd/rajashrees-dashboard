@@ -32,7 +32,7 @@ export async function POST(request: Request) {
                 password, // Note: In a real app, hash this! But current legacy system stores plain/custom.
                 full_name,
                 role,
-                is_active: true
+                is_Active: true
             }])
             .select()
             .single();

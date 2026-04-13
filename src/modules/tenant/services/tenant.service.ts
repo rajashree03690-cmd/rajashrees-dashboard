@@ -11,7 +11,7 @@ export const tenantService = {
                 .from('tenants')
                 .select('*')
                 .eq('slug', slug)
-                .eq('is_active', true)
+                .eq('is_Active', true)
                 .is('deleted_at', null)
                 .single();
 
@@ -35,7 +35,7 @@ export const tenantService = {
                 .from('tenants')
                 .select('*')
                 .eq('id', id)
-                .eq('is_active', true)
+                .eq('is_Active', true)
                 .is('deleted_at', null)
                 .single();
 

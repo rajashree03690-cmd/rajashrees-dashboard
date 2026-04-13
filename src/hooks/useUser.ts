@@ -7,7 +7,7 @@ export interface User {
     email: string;
     full_name: string | null;
     role: 'Admin' | 'Manager' | 'Executive';
-    is_active?: boolean;
+    is_Active?: boolean;
 }
 
 export function useUser() {

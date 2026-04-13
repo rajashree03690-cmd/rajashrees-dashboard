@@ -77,7 +77,7 @@ export async function createAdminUser(userData: CreateAdminUserData): Promise<Ad
                 email: userData.email,
                 full_name: userData.full_name,
                 role_id: userData.role_id,
-                is_active: true,
+                is_Active: true,
             })
             .select(`
         *,
@@ -117,10 +117,10 @@ export async function updateAdminUser(id: string, updates: UpdateAdminUserData):
 }
 
 export async function deleteAdminUser(id: string): Promise<boolean> {
-    // Soft delete - set is_active to false
+    // Soft delete - set is_Active to false
     const { error } = await supabase
         .from('dashboard_users')
-        .update({ is_active: false })
+        .update({ is_Active: false })
         .eq('id', id);
 
     if (error) {
@@ -134,7 +134,7 @@ export async function deleteAdminUser(id: string): Promise<boolean> {
 export async function toggleAdminUserStatus(id: string, isActive: boolean): Promise<boolean> {
     const { error } = await supabase
         .from('dashboard_users')
-        .update({ is_active: isActive })
+        .update({ is_Active: isActive })
         .eq('id', id);
 
     if (error) {

@@ -6,7 +6,7 @@ export interface CreateUserData {
     full_name: string;
     role: 'Admin' | 'Manager' | 'Executive';
     phone?: string;
-    is_active?: boolean;
+    is_Active?: boolean;
 }
 
 export interface UpdateUserData {
@@ -14,7 +14,7 @@ export interface UpdateUserData {
     role?: 'Admin' | 'Manager' | 'Executive';
     phone?: string;
     avatar_url?: string;
-    is_active?: boolean;
+    is_Active?: boolean;
 }
 
 export const usersService = {
@@ -90,7 +90,7 @@ export const usersService = {
         try {
             const { error } = await supabase
                 .from('dashboard_users')
-                .update({ is_active: false })
+                .update({ is_Active: false })
                 .eq('id', userId);
 
             if (error) throw error;
@@ -108,7 +108,7 @@ export const usersService = {
         try {
             const { error } = await supabase
                 .from('dashboard_users')
-                .update({ is_active: true })
+                .update({ is_Active: true })
                 .eq('id', userId);
 
             if (error) throw error;

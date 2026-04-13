@@ -13,7 +13,7 @@ export interface Tenant {
     metadata: Record<string, any>;
     created_at: string;
     updated_at: string;
-    is_active: boolean;
+    is_Active: boolean;
 }
 
 export interface TenantMembership {

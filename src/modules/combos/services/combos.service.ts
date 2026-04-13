@@ -104,7 +104,7 @@ export const combosService = {
     async disableCombo(comboId: number): Promise<void> {
         const { error } = await supabase
             .from('combo')
-            .update({ is_active: false, updated_at: new Date().toISOString() })
+            .update({ is_Active: false, updated_at: new Date().toISOString() })
             .eq('combo_id', comboId);
 
         if (error) {
@@ -119,7 +119,7 @@ export const combosService = {
     async enableCombo(comboId: number): Promise<void> {
         const { error } = await supabase
             .from('combo')
-            .update({ is_active: true, updated_at: new Date().toISOString() })
+            .update({ is_Active: true, updated_at: new Date().toISOString() })
             .eq('combo_id', comboId);
 
         if (error) {

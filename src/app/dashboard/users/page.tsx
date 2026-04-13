@@ -34,7 +34,7 @@ interface User {
     email: string;
     full_name: string;
     role: string;
-    is_active: boolean;
+    is_Active: boolean;
     created_at: string;
 }
 
@@ -144,7 +144,7 @@ export default function UsersPage() {
         mutationFn: async ({ userId, isActive }: { userId: number; isActive: boolean }) => {
             const { error } = await supabase
                 .from('users')
-                .update({ is_active: !isActive })
+                .update({ is_Active: !isActive })
                 .eq('user_id', userId);
 
             if (error) throw error;
@@ -257,18 +257,18 @@ export default function UsersPage() {
             ),
         },
         {
-            key: 'is_active',
+            key: 'is_Active',
             label: 'Status',
             render: (user: User) => (
                 <Badge
                     variant="outline"
                     className={
-                        user.is_active
+                        user.is_Active
                             ? 'bg-green-50 text-green-700 border-green-200'
                             : 'bg-red-50 text-red-700 border-red-200'
                     }
                 >
-                    {user.is_active ? 'Active' : 'Inactive'}
+                    {user.is_Active ? 'Active' : 'Inactive'}
                 </Badge>
             ),
         },
@@ -286,9 +286,9 @@ export default function UsersPage() {
                         <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => toggleUserStatus.mutate({ userId: user.user_id, isActive: user.is_active })}
+                            onClick={() => toggleUserStatus.mutate({ userId: user.user_id, isActive: user.is_Active })}
                         >
-                            {user.is_active ? 'Deactivate' : 'Activate'}
+                            {user.is_Active ? 'Deactivate' : 'Activate'}
                         </Button>
                         <Button
                             variant="ghost"
@@ -364,7 +364,7 @@ export default function UsersPage() {
                                 <div>
                                     <p className="text-sm text-gray-600">Active Users</p>
                                     <p className="text-2xl font-bold mt-1">
-                                        {users.filter(u => u.is_active).length}
+                                        {users.filter(u => u.is_Active).length}
                                     </p>
                                 </div>
                                 <div className="bg-green-50 p-3 rounded-lg">
@@ -379,7 +379,7 @@ export default function UsersPage() {
                                 <div>
                                     <p className="text-sm text-gray-600">Inactive Users</p>
                                     <p className="text-2xl font-bold mt-1">
-                                        {users.filter(u => !u.is_active).length}
+                                        {users.filter(u => !u.is_Active).length}
                                     </p>
                                 </div>
                                 <div className="bg-red-50 p-3 rounded-lg">

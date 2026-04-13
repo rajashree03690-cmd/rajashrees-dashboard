@@ -42,7 +42,7 @@ serve(async (req) => {
 
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i].trim();
-                const matchSKU = line.match(/^\d+,\s*([A-Z0-9-]+)\s*:/i);
+                const matchSKU = line.match(/^\d+,\s*([A-Z0-9.\-]+)\s*:/i);
                 if (matchSKU) {
                     const sku = matchSKU[1];
                     let quantity: number | null = null;
@@ -64,7 +64,7 @@ serve(async (req) => {
 
             await logEvent("insert-whatsapp-order", "Parsed SKUs", parsedItems, "success");
 
-            // --- Smart SKU Resolution (same 4-priority logic as getproductforwhatsapp) ---
+            // --- Smart SKU Resolution (deterministic — matches getproductforwhatsapp behavior) ---
             for (const item of parsedItems) {
                 try {
                     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -80,8 +80,8 @@ serve(async (req) => {
                     const numMatch = normalizedCode.match(/\d+$/);
                     const numericCode = numMatch ? numMatch[0] : null;
 
-                    // Helper: try a single SKU query
-                    async function trySkuMatch(table: string, filter: string): Promise<any | null> {
+                    // Helper: exact match (returns single row)
+                    async function tryExactMatch(table: string, filter: string): Promise<any | null> {
                         const resp = await fetch(
                             `${supabaseUrl}/rest/v1/${table}?select=variant_id,saleprice,regularprice,sku&${filter}&limit=1`,
                             { method: "GET", headers }
@@ -89,6 +89,27 @@ serve(async (req) => {
                         if (!resp.ok) return null;
                         const data = await resp.json();
                         return data.length > 0 ? data[0] : null;
+                    }
+
+                    // Helper: fuzzy match — fetches ALL candidates, picks the BEST one
+                    // Best = shortest SKU (most specific match) → then highest variant_id (newest)
+                    async function tryFuzzyMatch(table: string, filter: string): Promise<any | null> {
+                        const resp = await fetch(
+                            `${supabaseUrl}/rest/v1/${table}?select=variant_id,saleprice,regularprice,sku&${filter}&order=sku.asc&limit=10`,
+                            { method: "GET", headers }
+                        );
+                        if (!resp.ok) return null;
+                        const data = await resp.json();
+                        if (data.length === 0) return null;
+                        if (data.length === 1) return data[0];
+                        // Pick the shortest SKU (closest to exact match)
+                        data.sort((a: any, b: any) => {
+                            const lenDiff = (a.sku || '').length - (b.sku || '').length;
+                            if (lenDiff !== 0) return lenDiff;
+                            // Same length: prefer highest variant_id (newest product)
+                            return (b.variant_id || 0) - (a.variant_id || 0);
+                        });
+                        return data[0];
                     }
 
                     // Also try combo table
@@ -105,15 +126,15 @@ serve(async (req) => {
                     let matched: any = null;
                     let isComboItem = false;
 
-                    // Priority 1: Exact match on product_variants
-                    matched = await trySkuMatch("product_variants", `sku=eq.${originalCode}`);
-                    // Priority 2: RFP- prefix
-                    if (!matched) matched = await trySkuMatch("product_variants", `sku=eq.RFP-${normalizedCode}`);
-                    // Priority 3: Suffix ilike
-                    if (!matched) matched = await trySkuMatch("product_variants", `sku=ilike.*${normalizedCode}`);
-                    // Priority 4: Digits-only fallback (min 3 digits)
+                    // Priority 1: Exact match on product_variants (deterministic)
+                    matched = await tryExactMatch("product_variants", `sku=eq.${originalCode}`);
+                    // Priority 2: RFP- prefix exact match (deterministic)
+                    if (!matched) matched = await tryExactMatch("product_variants", `sku=eq.RFP-${normalizedCode}`);
+                    // Priority 3: Suffix fuzzy match — picks BEST from candidates
+                    if (!matched) matched = await tryFuzzyMatch("product_variants", `sku=ilike.*${normalizedCode}`);
+                    // Priority 4: Digits-only fuzzy fallback (min 3 digits)
                     if (!matched && numericCode && numericCode.length >= 3) {
-                        matched = await trySkuMatch("product_variants", `sku=ilike.*${numericCode}`);
+                        matched = await tryFuzzyMatch("product_variants", `sku=ilike.*${numericCode}`);
                     }
 
                     // Priority 5: Try combo table

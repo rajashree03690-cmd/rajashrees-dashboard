@@ -105,7 +105,7 @@ export default function AdminUsersPage() {
                                     </span>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
-                                    {user.is_active ? (
+                                    {user.is_Active ? (
                                         <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded flex items-center gap-1 w-fit">
                                             <UserCheck className="w-3 h-3" />
                                             Active
@@ -123,10 +123,10 @@ export default function AdminUsersPage() {
                                 {canEdit && (
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
                                         <button
-                                            onClick={() => handleToggleStatus(user.id, user.is_active)}
+                                            onClick={() => handleToggleStatus(user.id, user.is_Active)}
                                             className="text-purple-600 hover:text-purple-900"
                                         >
-                                            {user.is_active ? 'Deactivate' : 'Activate'}
+                                            {user.is_Active ? 'Deactivate' : 'Activate'}
                                         </button>
                                     </td>
                                 )}

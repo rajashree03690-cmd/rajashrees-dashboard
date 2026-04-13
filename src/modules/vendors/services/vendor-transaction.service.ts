@@ -142,7 +142,7 @@ class VendorTransactionService {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        is_active: isActive,
+                        is_Active: isActive,
                         updated_at: new Date().toISOString(),
                     }),
                 }
