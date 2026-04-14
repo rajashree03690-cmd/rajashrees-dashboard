@@ -44,6 +44,8 @@ export interface Order {
     order_date: string;
     refund_status?: 'none' | 'partial' | 'processing' | 'refunded' | 'failed';
     refunded_amount?: number;
+    cancelled_by?: 'customer' | 'admin' | string;
+    cancellation_reason?: string;
 
     // Joined data
     customers?: Customer;

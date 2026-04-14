@@ -1058,6 +1058,27 @@ export default function OrdersPage() {
                                 </div>
                             </div>
 
+                            {/* Cancellation Info */}
+                            {(orderDetailsDialog.order.order_status === 'Cancelled' || orderDetailsDialog.order.order_status === 'cancelled') && (
+                                <div className="border-2 border-red-200 bg-red-50 rounded-lg p-4">
+                                    <h3 className="font-semibold mb-2 flex items-center gap-2 text-red-700">
+                                        <AlertTriangle className="h-4 w-4" />
+                                        Cancellation Details
+                                    </h3>
+                                    <div className="text-sm space-y-1">
+                                        <p>
+                                            <strong>Cancelled by:</strong>{' '}
+                                            <Badge variant={orderDetailsDialog.order.cancelled_by === 'customer' ? 'secondary' : 'destructive'} className="ml-1">
+                                                {orderDetailsDialog.order.cancelled_by === 'customer' ? '👤 Customer' : '🔧 Admin'}
+                                            </Badge>
+                                        </p>
+                                        {orderDetailsDialog.order.cancellation_reason && (
+                                            <p><strong>Reason:</strong> {orderDetailsDialog.order.cancellation_reason}</p>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
                             <div>
                                 <h3 className="font-semibold mb-2">Order Items</h3>
                                 <div className="space-y-2">
