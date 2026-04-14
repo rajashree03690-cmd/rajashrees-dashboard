@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -18,6 +18,7 @@ const getNavigation = (isAdmin: boolean) => {
         { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
         { name: 'Orders', href: '/dashboard/orders', icon: ShoppingCart },
         { name: 'Customers', href: '/dashboard/customers', icon: Users },
+        { name: 'Enquiries', href: '/dashboard/enquiries', icon: MessageSquare },
         { name: 'Products', href: '/dashboard/products', icon: Package },
         { name: 'Trending', href: '/dashboard/trending', icon: Flame },
         { name: 'Categories', href: '/dashboard/categories', icon: FolderTree },
