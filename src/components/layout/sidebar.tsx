@@ -10,36 +10,47 @@ import {
     LayoutDashboard, MessageSquare, ShoppingCart, Users, Package,
     Store, Truck, RotateCcw, Layers, ShoppingBag,
     Image as ImageIcon, AlertCircle, Ticket, Users2,
-    Megaphone, ChevronDown, Sparkles, PanelLeftClose, PanelLeftOpen, UserCog, FolderTree, Flame, PlaneTakeoff, ArrowDownToLine
+    Megaphone, ChevronDown, Sparkles, PanelLeftClose, PanelLeftOpen, UserCog, FolderTree, Flame, PlaneTakeoff, ArrowDownToLine, Settings, Inbox
 } from 'lucide-react';
 
 const getNavigation = (isAdmin: boolean) => {
     const baseNav = [
         { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
         { name: 'Orders', href: '/dashboard/orders', icon: ShoppingCart },
-        { name: 'Customers', href: '/dashboard/customers', icon: Users },
-        { name: 'Enquiries', href: '/dashboard/enquiries', icon: MessageSquare },
         { name: 'Products', href: '/dashboard/products', icon: Package },
         { name: 'Trending', href: '/dashboard/trending', icon: Flame },
         { name: 'Categories', href: '/dashboard/categories', icon: FolderTree },
         { name: 'Vendors', href: '/dashboard/vendors', icon: Store },
         { name: 'Shipments', href: '/dashboard/shipments', icon: Truck },
         { name: 'Delhivery', href: '/dashboard/delhivery', icon: PlaneTakeoff },
-        { name: 'Queries', href: '/dashboard/queries', icon: MessageSquare },
-        { name: 'Tickets', href: '/dashboard/tickets', icon: AlertCircle },
         { name: 'Returns', href: '/dashboard/returns', icon: RotateCcw },
         { name: 'Combos', href: '/dashboard/combos', icon: Layers },
         { name: 'Purchases', href: '/dashboard/purchases', icon: ShoppingBag },
         { name: 'Banners', href: '/dashboard/banners', icon: ImageIcon },
     ];
 
-    // Admin-only nav items
-    if (isAdmin) {
-        baseNav.push({ name: 'Users', href: '/dashboard/users', icon: UserCog });
-    }
-
     return baseNav;
 };
+
+const getCustomersNav = () => ({
+    name: 'Customers',
+    icon: Users,
+    items: [
+        { name: 'Customers', href: '/dashboard/customers', icon: Users },
+        { name: 'Enquiries', href: '/dashboard/enquiries', icon: Inbox },
+        { name: 'Queries', href: '/dashboard/queries', icon: MessageSquare },
+        { name: 'Tickets', href: '/dashboard/tickets', icon: AlertCircle },
+    ],
+});
+
+const getSystemNav = (isAdmin: boolean) => ({
+    name: 'System',
+    icon: Settings,
+    items: [
+        ...(isAdmin ? [{ name: 'Users', href: '/dashboard/users', icon: UserCog }] : []),
+        { name: 'Settings', href: '/dashboard/settings', icon: Settings },
+    ],
+});
 
 const getMarketingNav = () => ({
     name: 'Marketing & Growth',
@@ -63,11 +74,17 @@ export function Sidebar({ isCollapsed = false, onToggleCollapse }: SidebarProps)
 
     // Generate role-aware navigation
     const navigation = getNavigation(isAdmin);
+    const customersNav = getCustomersNav();
     const marketingNav = getMarketingNav();
+    const systemNav = getSystemNav(isAdmin);
 
+    const [customersOpen, setCustomersOpen] = useState(!isCollapsed);
     const [marketingOpen, setMarketingOpen] = useState(!isCollapsed);
+    const [systemOpen, setSystemOpen] = useState(!isCollapsed);
     const [logoHover, setLogoHover] = useState(false);
+    const isCustomersActive = customersNav.items.some(item => pathname === item.href);
     const isMarketingActive = marketingNav.items.some(item => pathname === item.href);
+    const isSystemActive = systemNav.items.some(item => pathname === item.href);
 
     if (loading) {
         return null; // or a loading skeleton
@@ -191,6 +208,82 @@ export function Sidebar({ isCollapsed = false, onToggleCollapse }: SidebarProps)
                             );
                         })}
 
+                        {/* Customers Group */}
+                        <li>
+                            {isCollapsed ? (
+                                <Link
+                                    href="/dashboard/customers"
+                                    className={cn(
+                                        'group relative flex items-center justify-center px-3 py-3 rounded-xl text-sm font-medium transition-all duration-300',
+                                        isCustomersActive
+                                            ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-500/30'
+                                            : 'text-slate-300 hover:text-white hover:bg-white/10'
+                                    )}
+                                    title="Customers"
+                                >
+                                    <customersNav.icon className="h-5 w-5" />
+                                </Link>
+                            ) : (
+                                <>
+                                    <button
+                                        onClick={() => setCustomersOpen(!customersOpen)}
+                                        className={cn(
+                                            'group w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 relative overflow-hidden',
+                                            isCustomersActive
+                                                ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-500/30'
+                                                : 'text-slate-300 hover:text-white hover:bg-white/10'
+                                        )}
+                                    >
+                                        {!isCustomersActive && (
+                                            <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/5 to-transparent" />
+                                        )}
+                                        <div className="flex items-center gap-3 relative z-10">
+                                            <customersNav.icon className={cn(
+                                                'h-5 w-5 transition-transform duration-300',
+                                                isCustomersActive && 'scale-110',
+                                                !isCustomersActive && 'group-hover:scale-110'
+                                            )} />
+                                            {customersNav.name}
+                                        </div>
+                                        <ChevronDown className={cn(
+                                            'h-4 w-4 transition-transform duration-300 relative z-10',
+                                            !customersOpen && '-rotate-90'
+                                        )} />
+                                    </button>
+
+                                    <div className={cn(
+                                        'overflow-hidden transition-all duration-300 ease-in-out',
+                                        customersOpen ? 'max-h-48 opacity-100 mt-1' : 'max-h-0 opacity-0'
+                                    )}>
+                                        <ul className="space-y-1 ml-3 pl-3 border-l border-white/10">
+                                            {customersNav.items.map((subItem) => {
+                                                const isActive = pathname === subItem.href;
+                                                return (
+                                                    <li key={subItem.name}>
+                                                        <Link
+                                                            href={subItem.href}
+                                                            className={cn(
+                                                                'group flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 relative',
+                                                                isActive
+                                                                    ? 'bg-purple-500/20 text-purple-200 border-l-2 border-purple-400'
+                                                                    : 'text-slate-400 hover:bg-white/5 hover:text-slate-200 border-l-2 border-transparent'
+                                                            )}
+                                                        >
+                                                            <subItem.icon className={cn(
+                                                                'h-4 w-4 transition-transform duration-200',
+                                                                isActive && 'scale-110'
+                                                            )} />
+                                                            {subItem.name}
+                                                        </Link>
+                                                    </li>
+                                                );
+                                            })}
+                                        </ul>
+                                    </div>
+                                </>
+                            )}
+                        </li>
+
                         {!isCollapsed && (
                             <li className="pt-4 pb-2">
                                 <div className="flex items-center gap-2 px-4">
@@ -199,6 +292,7 @@ export function Sidebar({ isCollapsed = false, onToggleCollapse }: SidebarProps)
                             </li>
                         )}
 
+                        {/* Marketing Group */}
                         <li>
                             {isCollapsed ? (
                                 <Link
@@ -248,6 +342,82 @@ export function Sidebar({ isCollapsed = false, onToggleCollapse }: SidebarProps)
                                     )}>
                                         <ul className="space-y-1 ml-3 pl-3 border-l border-white/10">
                                             {marketingNav.items.map((subItem) => {
+                                                const isActive = pathname === subItem.href;
+                                                return (
+                                                    <li key={subItem.name}>
+                                                        <Link
+                                                            href={subItem.href}
+                                                            className={cn(
+                                                                'group flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 relative',
+                                                                isActive
+                                                                    ? 'bg-purple-500/20 text-purple-200 border-l-2 border-purple-400'
+                                                                    : 'text-slate-400 hover:bg-white/5 hover:text-slate-200 border-l-2 border-transparent'
+                                                            )}
+                                                        >
+                                                            <subItem.icon className={cn(
+                                                                'h-4 w-4 transition-transform duration-200',
+                                                                isActive && 'scale-110'
+                                                            )} />
+                                                            {subItem.name}
+                                                        </Link>
+                                                    </li>
+                                                );
+                                            })}
+                                        </ul>
+                                    </div>
+                                </>
+                            )}
+                        </li>
+
+                        {/* System Group */}
+                        <li>
+                            {isCollapsed ? (
+                                <Link
+                                    href="/dashboard/settings"
+                                    className={cn(
+                                        'group relative flex items-center justify-center px-3 py-3 rounded-xl text-sm font-medium transition-all duration-300',
+                                        isSystemActive
+                                            ? 'bg-gradient-to-r from-slate-600 to-gray-600 text-white shadow-lg shadow-slate-500/30'
+                                            : 'text-slate-300 hover:text-white hover:bg-white/10'
+                                    )}
+                                    title="System"
+                                >
+                                    <systemNav.icon className="h-5 w-5" />
+                                </Link>
+                            ) : (
+                                <>
+                                    <button
+                                        onClick={() => setSystemOpen(!systemOpen)}
+                                        className={cn(
+                                            'group w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 relative overflow-hidden',
+                                            isSystemActive
+                                                ? 'bg-gradient-to-r from-slate-600 to-gray-600 text-white shadow-lg shadow-slate-500/30'
+                                                : 'text-slate-300 hover:text-white hover:bg-white/10'
+                                        )}
+                                    >
+                                        {!isSystemActive && (
+                                            <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/5 to-transparent" />
+                                        )}
+                                        <div className="flex items-center gap-3 relative z-10">
+                                            <systemNav.icon className={cn(
+                                                'h-5 w-5 transition-transform duration-300',
+                                                isSystemActive && 'scale-110',
+                                                !isSystemActive && 'group-hover:scale-110'
+                                            )} />
+                                            {systemNav.name}
+                                        </div>
+                                        <ChevronDown className={cn(
+                                            'h-4 w-4 transition-transform duration-300 relative z-10',
+                                            !systemOpen && '-rotate-90'
+                                        )} />
+                                    </button>
+
+                                    <div className={cn(
+                                        'overflow-hidden transition-all duration-300 ease-in-out',
+                                        systemOpen ? 'max-h-48 opacity-100 mt-1' : 'max-h-0 opacity-0'
+                                    )}>
+                                        <ul className="space-y-1 ml-3 pl-3 border-l border-white/10">
+                                            {systemNav.items.map((subItem) => {
                                                 const isActive = pathname === subItem.href;
                                                 return (
                                                     <li key={subItem.name}>
