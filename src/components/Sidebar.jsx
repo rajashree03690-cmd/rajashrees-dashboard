@@ -26,7 +26,8 @@ import {
     Ticket,
     Users2,
     Settings,
-    Flame
+    Flame,
+    Inbox
 } from 'lucide-react';
 import { useIsAdmin } from '@/hooks/useUser';
 
@@ -73,6 +74,7 @@ const getMenuConfig = (isAdmin) => {
             type: 'group',
             items: [
                 { label: 'Customers', href: '/dashboard/customers', icon: Users },
+                { label: 'Enquiries', href: '/dashboard/enquiries', icon: Inbox },
                 { label: 'Queries', href: '/dashboard/queries', icon: MessageSquare },
                 { label: 'Tickets', href: '/dashboard/tickets', icon: AlertCircle }
             ]
