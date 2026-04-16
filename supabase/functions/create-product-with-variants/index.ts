@@ -235,7 +235,7 @@ serve(async (req) => {
 
             const { error: variantInsertErr } = await supabase
                 .from("product_variants")
-                .upsert(variants);
+                .insert(variants);
 
             if (variantInsertErr) {
                 console.error("❌ Variant insert failed, rolling back:", variantInsertErr);
@@ -271,7 +271,7 @@ serve(async (req) => {
 
             const { error: variantInsertErr } = await supabase
                 .from("product_variants")
-                .upsert(variants);
+                .insert(variants);
 
             if (variantInsertErr) {
                 console.error("❌ Single variant insert failed, rolling back:", variantInsertErr);
