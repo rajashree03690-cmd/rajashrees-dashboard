@@ -10,9 +10,14 @@ const corsHeaders = {
  * Order Notification Edge Function
  * 
  * Sends branded HTML emails for order lifecycle events.
- * Input: { type, order_id, tracking_id?, carrier? }
+ * Design: Gold/Cherry color scheme matching rajashreefashions.com
+ * Input: { type, order_id, tracking_id?, carrier?, refund_amount?, refund_id? }
  * Types: order_received, invoice_generated, order_dispatched, order_delivered, refund_initiated
  */
+
+// Logo URL (public hosted)
+const LOGO_URL = 'https://rajashreefashions.com/rajashree-logo.png'
+const SITE_URL = 'https://rajashreefashions.com'
 
 // ─── HTML Templates ───────────────────────────────────────────────
 
@@ -24,46 +29,140 @@ function baseTemplate(title: string, content: string, footerNote?: string) {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-  body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f5f5f5; }
-  .wrapper { max-width: 600px; margin: 0 auto; background: #ffffff; }
-  .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 30px 40px; text-align: center; }
-  .header h1 { color: #ffffff; font-size: 24px; margin: 0; letter-spacing: 2px; font-weight: 300; }
-  .header .subtitle { color: #e2c8a0; font-size: 13px; letter-spacing: 4px; text-transform: uppercase; margin-top: 4px; }
-  .content { padding: 40px; }
-  .title { font-size: 22px; font-weight: 700; color: #1a1a2e; margin-bottom: 8px; }
-  .status-badge { display: inline-block; padding: 6px 16px; border-radius: 20px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
-  .badge-green { background: #e8f5e9; color: #2e7d32; }
-  .badge-blue { background: #e3f2fd; color: #1565c0; }
-  .badge-purple { background: #f3e5f5; color: #7b1fa2; }
-  .badge-orange { background: #fff3e0; color: #e65100; }
-  .divider { height: 1px; background: #eee; margin: 24px 0; }
-  .items-table { width: 100%; border-collapse: collapse; margin: 16px 0; }
-  .items-table th { background: #f8f9fa; padding: 10px 12px; text-align: left; font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #eee; }
-  .items-table td { padding: 12px; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
-  .total-row td { font-weight: 700; font-size: 16px; border-top: 2px solid #1a1a2e; padding-top: 16px; }
-  .info-box { background: #f8f9fa; border-left: 4px solid #1a1a2e; padding: 16px 20px; margin: 20px 0; border-radius: 0 8px 8px 0; }
-  .tracking-box { background: #e3f2fd; border: 2px dashed #1565c0; padding: 20px; text-align: center; margin: 20px 0; border-radius: 8px; }
-  .tracking-id { font-size: 24px; font-weight: 700; color: #1565c0; letter-spacing: 3px; font-family: monospace; }
-  .btn { display: inline-block; padding: 12px 32px; background: #1a1a2e; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; }
-  .footer { background: #f8f9fa; padding: 24px 40px; text-align: center; font-size: 12px; color: #999; }
-  .footer a { color: #1a1a2e; text-decoration: none; }
-  .address-block { background: #fafafa; padding: 16px; border-radius: 8px; margin: 12px 0; }
+  body { font-family: 'Georgia', 'Noto Serif', serif; line-height: 1.7; color: #4d4635; margin: 0; padding: 0; background: #f5f0e3; }
+  .outer { max-width: 640px; margin: 0 auto; padding: 24px; }
+  .wrapper { background: #ffffff; border-radius: 16px; overflow: hidden; border: 2px solid #d4af37; box-shadow: 0 8px 32px rgba(115, 92, 0, 0.12); }
+  
+  /* Header with gold gradient */
+  .header { 
+    background: linear-gradient(135deg, #735c00 0%, #d4af37 50%, #8b7a2e 100%); 
+    padding: 32px 40px; 
+    text-align: center; 
+    position: relative;
+    overflow: hidden;
+  }
+  /* Logo watermark in header */
+  .header::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 180px;
+    height: 180px;
+    background: url('${LOGO_URL}') center/contain no-repeat;
+    opacity: 0.08;
+  }
+  .header-logo { width: 60px; height: 60px; border-radius: 12px; background: #fff; padding: 4px; display: inline-block; margin-bottom: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.2); }
+  .header-logo img { width: 100%; height: 100%; object-fit: contain; border-radius: 8px; }
+  .header h1 { color: #ffffff; font-size: 26px; margin: 0; letter-spacing: 3px; font-weight: 400; font-style: italic; position: relative; z-index: 1; text-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+  .header .subtitle { color: #fff8e1; font-size: 11px; letter-spacing: 5px; text-transform: uppercase; margin-top: 6px; position: relative; z-index: 1; font-family: Arial, sans-serif; }
+  
+  /* Gold decorative border below header */
+  .gold-border { height: 4px; background: linear-gradient(90deg, transparent, #d4af37, #735c00, #d4af37, transparent); }
+  
+  /* Content area with subtle logo watermark */
+  .content { 
+    padding: 40px; 
+    position: relative;
+    background: #ffffff;
+  }
+  .content::after {
+    content: '';
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    width: 120px;
+    height: 120px;
+    background: url('${LOGO_URL}') center/contain no-repeat;
+    opacity: 0.04;
+  }
+  
+  .title { font-size: 22px; font-weight: 700; color: #735c00; margin-bottom: 8px; font-style: italic; }
+  
+  /* Status badges */
+  .status-badge { display: inline-block; padding: 6px 18px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; font-family: Arial, sans-serif; }
+  .badge-green { background: linear-gradient(135deg, #e8f5e9, #c8e6c9); color: #2e7d32; border: 1px solid #a5d6a7; }
+  .badge-gold { background: linear-gradient(135deg, #fff8e1, #ffecb3); color: #735c00; border: 1px solid #d4af37; }
+  .badge-cherry { background: linear-gradient(135deg, #fce4ec, #f8bbd0); color: #af2b3e; border: 1px solid #ef9a9a; }
+  .badge-blue { background: linear-gradient(135deg, #e3f2fd, #bbdefb); color: #1565c0; border: 1px solid #90caf9; }
+  .badge-orange { background: linear-gradient(135deg, #fff3e0, #ffe0b2); color: #e65100; border: 1px solid #ffcc80; }
+  
+  /* Decorative divider */
+  .divider { height: 1px; background: linear-gradient(90deg, transparent, #d4af37, transparent); margin: 28px 0; }
+  
+  /* Items table */
+  .items-table { width: 100%; border-collapse: collapse; margin: 16px 0; border: 1px solid #f0ead6; border-radius: 8px; overflow: hidden; }
+  .items-table th { background: linear-gradient(135deg, #faf7f0, #f5f0e3); padding: 12px 14px; text-align: left; font-size: 11px; color: #735c00; text-transform: uppercase; letter-spacing: 1px; border-bottom: 2px solid #d4af37; font-family: Arial, sans-serif; }
+  .items-table td { padding: 14px; border-bottom: 1px solid #f5f0e3; font-size: 14px; color: #4d4635; }
+  .items-table tr:last-child td { border-bottom: none; }
+  .items-table .sku { font-size: 11px; color: #8b7a2e; font-family: monospace; margin-top: 2px; }
+  .total-row td { font-weight: 700; font-size: 16px; border-top: 2px solid #d4af37; padding-top: 16px; color: #735c00; }
+  
+  /* Info box with gold accent */
+  .info-box { background: linear-gradient(135deg, #faf7f0, #f5f0e3); border-left: 4px solid #d4af37; padding: 18px 22px; margin: 20px 0; border-radius: 0 12px 12px 0; border: 1px solid #f0ead6; border-left: 4px solid #d4af37; }
+  
+  /* Tracking box */
+  .tracking-box { background: linear-gradient(135deg, #faf7f0, #fff8e1); border: 2px dashed #d4af37; padding: 24px; text-align: center; margin: 24px 0; border-radius: 12px; }
+  .tracking-id { font-size: 24px; font-weight: 700; color: #735c00; letter-spacing: 4px; font-family: monospace; }
+  
+  /* CTA Button */
+  .btn { display: inline-block; padding: 14px 36px; background: linear-gradient(135deg, #735c00, #d4af37); color: #ffffff; text-decoration: none; border-radius: 30px; font-weight: 700; font-size: 14px; letter-spacing: 1px; font-family: Arial, sans-serif; box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3); }
+  .btn-cherry { background: linear-gradient(135deg, #af2b3e, #d4365e); box-shadow: 0 4px 12px rgba(175, 43, 62, 0.3); }
+  
+  /* Address block */
+  .address-block { background: #faf7f0; padding: 18px; border-radius: 12px; margin: 16px 0; border: 1px solid #f0ead6; }
+  
+  /* Footer */
+  .footer { 
+    background: linear-gradient(135deg, #1c1c18, #2a2520); 
+    padding: 28px 40px; 
+    text-align: center; 
+    font-size: 12px; 
+    color: #a09880; 
+    font-family: Arial, sans-serif;
+    position: relative;
+  }
+  .footer::before {
+    content: '';
+    display: block;
+    height: 3px;
+    background: linear-gradient(90deg, #735c00, #d4af37, #735c00);
+    margin: -28px -40px 20px;
+  }
+  .footer a { color: #d4af37; text-decoration: none; font-weight: 600; }
+  .footer-logo { width: 32px; height: 32px; border-radius: 8px; margin-bottom: 12px; opacity: 0.6; }
+  
+  /* Highlight text */
+  .gold-text { color: #d4af37; }
+  .cherry-text { color: #af2b3e; }
+  .bold { font-weight: 700; }
 </style>
 </head>
 <body>
+<div class="outer">
 <div class="wrapper">
   <div class="header">
+    <div class="header-logo"><img src="${LOGO_URL}" alt="RF" /></div>
     <h1>Rajashree Fashion</h1>
-    <div class="subtitle">Premium Indian Fashion</div>
+    <div class="subtitle">Premium Imitation Jewellery</div>
   </div>
+  <div class="gold-border"></div>
   <div class="content">
     ${content}
   </div>
   <div class="footer">
-    ${footerNote ? `<p style="margin-bottom:12px;color:#666;">${footerNote}</p>` : ''}
+    <img src="${LOGO_URL}" alt="RF" class="footer-logo" />
+    ${footerNote ? `<p style="margin-bottom:14px;color:#c8b590;font-style:italic;">${footerNote}</p>` : ''}
     <p>Need help? Contact us at <a href="mailto:support@rajashreefashion.com">support@rajashreefashion.com</a></p>
-    <p>&copy; ${new Date().getFullYear()} Rajashree Fashion. All rights reserved.</p>
+    <p style="margin-top:8px;">
+      <a href="${SITE_URL}" style="color:#d4af37;">Visit Our Store</a> &nbsp;•&nbsp; 
+      <a href="${SITE_URL}/orders" style="color:#d4af37;">Track Orders</a> &nbsp;•&nbsp; 
+      <a href="${SITE_URL}/contact" style="color:#d4af37;">Contact Us</a>
+    </p>
+    <p style="margin-top:16px;color:#665f50;">&copy; ${new Date().getFullYear()} Rajashree Fashion. All rights reserved.</p>
   </div>
+</div>
 </div>
 </body>
 </html>`
@@ -76,17 +175,20 @@ function formatCurrency(amount: number) {
 function itemsTableHtml(items: any[]) {
     const rows = items.map(item => `
     <tr>
-      <td>${item.variant_name || item.product_name || 'Item'}</td>
+      <td>
+        <strong>${item.variant_name || item.product_name || 'Item'}</strong>
+        ${item.sku ? `<div class="sku">SKU: ${item.sku}</div>` : ''}
+      </td>
       <td style="text-align:center">${item.quantity}</td>
       <td style="text-align:right">${formatCurrency(item.price || item.saleprice || 0)}</td>
-      <td style="text-align:right">${formatCurrency((item.price || item.saleprice || 0) * item.quantity)}</td>
+      <td style="text-align:right"><strong>${formatCurrency((item.price || item.saleprice || 0) * item.quantity)}</strong></td>
     </tr>`).join('')
 
     return `
     <table class="items-table">
       <thead>
         <tr>
-          <th>Item</th>
+          <th>Product</th>
           <th style="text-align:center">Qty</th>
           <th style="text-align:right">Price</th>
           <th style="text-align:right">Total</th>
@@ -101,38 +203,45 @@ function itemsTableHtml(items: any[]) {
 function orderReceivedEmail(order: any, items: any[]) {
     const content = `
     <p class="title">Order Confirmed! 🎉</p>
-    <span class="status-badge badge-green">Payment Successful</span>
+    <span class="status-badge badge-green">✓ Payment Successful</span>
     <div class="divider"></div>
     
     <p>Dear <strong>${order.name || 'Customer'}</strong>,</p>
-    <p>Thank you for your order! We've received your payment and your order is now being processed.</p>
+    <p>Thank you for choosing Rajashree Fashion! We've received your payment and your order is now being processed with care.</p>
     
     <div class="info-box">
-      <strong>Order #${order.order_id}</strong><br>
-      Date: ${new Date(order.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}<br>
-      Payment: ${order.payment_method || 'Prepaid'} ✅
+      <strong style="color:#735c00;font-size:16px;">Order #${order.order_id}</strong><br>
+      <span style="color:#8b7a2e;">Date: ${new Date(order.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}</span><br>
+      <span style="color:#2e7d32;font-weight:700;">Payment: ${order.payment_method || 'Prepaid'} ✅</span>
     </div>
     
     ${itemsTableHtml(items)}
     
-    <table style="width:100%;margin-top:8px;">
-      <tr><td>Subtotal</td><td style="text-align:right">${formatCurrency(order.total_amount - (order.shipping_amount || 0))}</td></tr>
-      <tr><td>Shipping</td><td style="text-align:right">${formatCurrency(order.shipping_amount || 0)}</td></tr>
-      <tr class="total-row"><td>Total Paid</td><td style="text-align:right;color:#2e7d32">${formatCurrency(order.total_amount)}</td></tr>
+    <table style="width:100%;margin-top:12px;font-size:14px;">
+      <tr><td style="color:#8b7a2e;">Subtotal</td><td style="text-align:right;color:#4d4635;">${formatCurrency(order.total_amount - (order.shipping_amount || 0))}</td></tr>
+      <tr><td style="color:#8b7a2e;">Shipping</td><td style="text-align:right;color:#4d4635;">${formatCurrency(order.shipping_amount || 0)}</td></tr>
+      <tr class="total-row"><td style="border-top:2px solid #d4af37;padding-top:12px;font-weight:700;color:#735c00;">Total Paid</td><td style="text-align:right;border-top:2px solid #d4af37;padding-top:12px;font-weight:700;color:#2e7d32;font-size:18px;">${formatCurrency(order.total_amount)}</td></tr>
     </table>
     
     <div class="address-block">
-      <strong>📦 Shipping to:</strong><br>
+      <strong style="color:#735c00;">📦 Shipping to:</strong><br>
       ${order.name}<br>
       ${order.shipping_address}<br>
       ${order.shipping_state || ''}<br>
       📞 ${order.contact_number || ''}
     </div>
     
-    <p style="color:#666;font-size:14px;">Your order will be processed and shipped within <strong>4-5 business days</strong>. We'll send you updates at every step!</p>
+    <div style="background:linear-gradient(135deg,#fff8e1,#faf7f0);border:1px solid #f0ead6;border-radius:12px;padding:18px;margin-top:20px;text-align:center;">
+      <p style="margin:0;color:#735c00;font-weight:600;">🕐 Your order will be processed and shipped within <strong>8-10 business days</strong>.</p>
+      <p style="margin:8px 0 0;font-size:13px;color:#8b7a2e;">We'll send you updates at every step!</p>
+    </div>
+
+    <div style="text-align:center;margin-top:24px;">
+      <a href="${SITE_URL}/orders" class="btn">View Your Orders</a>
+    </div>
     `
     return {
-        subject: `Order Confirmed - #${order.order_id} | Rajashree Fashion`,
+        subject: `Order Confirmed ✨ #${order.order_id} | Rajashree Fashion`,
         html: baseTemplate('Order Confirmed', content)
     }
 }
@@ -140,31 +249,34 @@ function orderReceivedEmail(order: any, items: any[]) {
 function invoiceGeneratedEmail(order: any, items: any[]) {
     const content = `
     <p class="title">Invoice Generated 📄</p>
-    <span class="status-badge badge-blue">Invoice Ready</span>
+    <span class="status-badge badge-gold">Invoice Ready</span>
     <div class="divider"></div>
     
     <p>Dear <strong>${order.name || 'Customer'}</strong>,</p>
-    <p>Great news! Your order has been confirmed and the invoice has been generated. Your order will be shipped within <strong>4-5 business days</strong>.</p>
+    <p>Great news! Your order has been confirmed and the invoice has been generated. Your order will be shipped within <strong>8-10 business days</strong>.</p>
     
     <div class="info-box">
-      <strong>Order #${order.order_id}</strong><br>
-      ${order.invoice_number ? `Invoice: ${order.invoice_number}<br>` : ''}
-      Amount: <strong>${formatCurrency(order.total_amount)}</strong>
+      <strong style="color:#735c00;font-size:16px;">Order #${order.order_id}</strong><br>
+      ${order.invoice_number ? `<span style="color:#8b7a2e;">Invoice: <strong>${order.invoice_number}</strong></span><br>` : ''}
+      <span style="color:#735c00;">Amount: <strong>${formatCurrency(order.total_amount)}</strong></span>
     </div>
     
     ${itemsTableHtml(items)}
     
     ${order.invoice_url ? `
-    <div style="text-align:center;margin:24px 0;">
+    <div style="text-align:center;margin:28px 0;">
       <a href="${order.invoice_url}" class="btn" target="_blank">📥 Download Invoice</a>
     </div>
     ` : ''}
     
-    <p style="color:#666;font-size:14px;">We're preparing your order for shipment. You'll receive a tracking notification once it's dispatched.</p>
+    <div style="background:linear-gradient(135deg,#fff8e1,#faf7f0);border:1px solid #f0ead6;border-radius:12px;padding:18px;text-align:center;">
+      <p style="margin:0;color:#735c00;font-weight:600;">📦 We're preparing your order for shipment.</p>
+      <p style="margin:8px 0 0;font-size:13px;color:#8b7a2e;">You'll receive a tracking notification once it's dispatched.</p>
+    </div>
     `
     return {
-        subject: `Invoice Ready - #${order.invoice_number || order.order_id} | Rajashree Fashion`,
-        html: baseTemplate('Invoice Generated', content, 'Your order will be shipped within 4-5 business days.')
+        subject: `Invoice Ready 📄 #${order.invoice_number || order.order_id} | Rajashree Fashion`,
+        html: baseTemplate('Invoice Generated', content, 'Your order will be shipped within 8-10 business days.')
     }
 }
 
@@ -181,36 +293,40 @@ function orderDispatchedEmail(order: any, items: any[], trackingId?: string, car
 
     const content = `
     <p class="title">Your Order is On Its Way! 🚚</p>
-    <span class="status-badge badge-purple">Shipped</span>
+    <span class="status-badge badge-cherry">✦ Shipped</span>
     <div class="divider"></div>
     
     <p>Dear <strong>${order.name || 'Customer'}</strong>,</p>
-    <p>Your order has been dispatched and is on its way to you!</p>
+    <p>Wonderful! Your order has been dispatched and is on its way to you!</p>
     
     <div class="info-box">
-      <strong>Order #${order.order_id}</strong><br>
-      Carrier: <strong>${carrierName}</strong>
+      <strong style="color:#735c00;font-size:16px;">Order #${order.order_id}</strong><br>
+      <span style="color:#8b7a2e;">Carrier: <strong>${carrierName}</strong></span>
     </div>
     
     ${trackingId ? `
     <div class="tracking-box">
-      <p style="margin:0 0 8px;font-size:13px;color:#666;">TRACKING ID</p>
+      <p style="margin:0 0 8px;font-size:11px;color:#8b7a2e;letter-spacing:3px;text-transform:uppercase;font-family:Arial,sans-serif;">Tracking ID</p>
       <div class="tracking-id">${trackingId}</div>
-      ${trackingLink ? `<p style="margin:12px 0 0"><a href="${trackingLink}" class="btn" target="_blank">🔍 Track Your Shipment</a></p>` : ''}
+      ${trackingLink ? `<p style="margin:16px 0 0"><a href="${trackingLink}" class="btn btn-cherry" target="_blank">🔍 Track Your Shipment</a></p>` : ''}
     </div>
     ` : ''}
+
+    ${itemsTableHtml(items)}
     
     <div class="address-block">
-      <strong>📦 Delivering to:</strong><br>
+      <strong style="color:#735c00;">📦 Delivering to:</strong><br>
       ${order.name}<br>
       ${order.shipping_address}<br>
       ${order.shipping_state || ''}
     </div>
     
-    <p style="color:#666;font-size:14px;">Estimated delivery: <strong>3-5 business days</strong> from dispatch date.</p>
+    <div style="background:linear-gradient(135deg,#fce4ec,#fff0f3);border:1px solid #f8bbd0;border-radius:12px;padding:18px;text-align:center;margin-top:20px;">
+      <p style="margin:0;color:#af2b3e;font-weight:600;">🎁 Estimated delivery: <strong>3-5 business days</strong> from dispatch date.</p>
+    </div>
     `
     return {
-        subject: `Order Shipped - #${order.order_id} | Rajashree Fashion`,
+        subject: `Order Shipped 🚚 #${order.order_id} | Rajashree Fashion`,
         html: baseTemplate('Order Shipped', content)
     }
 }
@@ -218,27 +334,30 @@ function orderDispatchedEmail(order: any, items: any[], trackingId?: string, car
 function orderDeliveredEmail(order: any, items: any[]) {
     const content = `
     <p class="title">Order Delivered! ✅</p>
-    <span class="status-badge badge-green">Delivered</span>
+    <span class="status-badge badge-green">✓ Delivered</span>
     <div class="divider"></div>
     
     <p>Dear <strong>${order.name || 'Customer'}</strong>,</p>
-    <p>Your order has been delivered successfully. We hope you love your purchase!</p>
+    <p>Your order has been delivered successfully. We hope you love your new jewellery!</p>
     
     <div class="info-box">
-      <strong>Order #${order.order_id}</strong><br>
-      Delivered on: ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}<br>
-      Amount: ${formatCurrency(order.total_amount)}
+      <strong style="color:#735c00;font-size:16px;">Order #${order.order_id}</strong><br>
+      <span style="color:#8b7a2e;">Delivered on: ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}</span><br>
+      <span style="color:#735c00;">Amount: ${formatCurrency(order.total_amount)}</span>
     </div>
     
     ${itemsTableHtml(items)}
     
-    <div style="background:#fff8e1;border-radius:8px;padding:16px;margin:20px 0;text-align:center;">
-      <p style="margin:0;font-weight:600;color:#f57f17;">💛 Enjoy your Rajashree Fashion purchase!</p>
-      <p style="margin:8px 0 0;font-size:13px;color:#666;">If you have any concerns about your order, please contact us within 7 days of delivery.</p>
+    <div style="background:linear-gradient(135deg,#fff8e1,#faf7f0);border:2px solid #d4af37;border-radius:16px;padding:24px;margin:24px 0;text-align:center;">
+      <p style="margin:0;font-size:18px;font-weight:600;color:#735c00;">💛 Enjoy your Rajashree Fashion purchase!</p>
+      <p style="margin:10px 0 0;font-size:13px;color:#8b7a2e;">If you have any concerns, please contact us within 7 days of delivery.</p>
+      <div style="margin-top:16px;">
+        <a href="${SITE_URL}/shop" class="btn">Shop More ✨</a>
+      </div>
     </div>
     `
     return {
-        subject: `Order Delivered - #${order.order_id} | Rajashree Fashion`,
+        subject: `Order Delivered ✅ #${order.order_id} | Rajashree Fashion`,
         html: baseTemplate('Order Delivered', content, 'Thank you for shopping with Rajashree Fashion!')
     }
 }
@@ -253,23 +372,40 @@ function refundInitiatedEmail(order: any, refundAmount: number, refundId?: strin
     <p>We've initiated a refund for your order. The amount will be credited back to your original payment method.</p>
     
     <div class="info-box">
-      <strong>Order #${order.order_id}</strong><br>
-      Refund Amount: <strong style="color:#2e7d32">${formatCurrency(refundAmount)}</strong><br>
-      ${refundId ? `Refund ID: ${refundId}<br>` : ''}
-      Status: <strong>Processing</strong>
+      <strong style="color:#735c00;font-size:16px;">Order #${order.order_id}</strong><br>
+      <span style="color:#2e7d32;font-size:18px;font-weight:700;">Refund Amount: ${formatCurrency(refundAmount)}</span><br>
+      ${refundId ? `<span style="color:#8b7a2e;">Refund ID: <code style="background:#f5f0e3;padding:2px 8px;border-radius:4px;">${refundId}</code></span><br>` : ''}
+      <span style="color:#e65100;font-weight:600;">Status: Processing</span>
     </div>
     
-    <div style="background:#e3f2fd;border-radius:8px;padding:16px;margin:20px 0;">
-      <p style="margin:0;font-weight:600;color:#1565c0;">⏱️ Refund Timeline</p>
-      <p style="margin:8px 0 0;font-size:14px;color:#333;">
-        The refund will reflect in your account within <strong>5-7 business days</strong> depending on your bank/payment provider.
-      </p>
+    <div style="background:linear-gradient(135deg,#fff8e1,#faf7f0);border:2px solid #d4af37;border-radius:12px;padding:20px;margin:24px 0;">
+      <p style="margin:0;font-weight:700;color:#735c00;font-size:16px;">⏱️ Refund Timeline</p>
+      <div style="background:#fff;border-radius:8px;padding:16px;margin-top:12px;border:1px solid #f0ead6;">
+        <table style="width:100%;font-size:14px;">
+          <tr>
+            <td style="padding:6px 0;color:#8b7a2e;">UPI / Wallets</td>
+            <td style="padding:6px 0;text-align:right;font-weight:600;color:#4d4635;">2-3 business days</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;color:#8b7a2e;">Debit / Credit Card</td>
+            <td style="padding:6px 0;text-align:right;font-weight:600;color:#4d4635;">5-7 business days</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;color:#8b7a2e;">Net Banking</td>
+            <td style="padding:6px 0;text-align:right;font-weight:600;color:#4d4635;">5-7 business days</td>
+          </tr>
+        </table>
+      </div>
     </div>
     
-    <p style="color:#666;font-size:14px;">If you don't receive the refund within 7 business days, please contact our support team.</p>
+    <p style="color:#8b7a2e;font-size:14px;">If you don't receive the refund within 7 business days, please contact our support team with your Refund ID.</p>
+    
+    <div style="text-align:center;margin-top:20px;">
+      <a href="mailto:support@rajashreefashion.com" class="btn">Contact Support</a>
+    </div>
     `
     return {
-        subject: `Refund Initiated - Order #${order.order_id} | Rajashree Fashion`,
+        subject: `Refund Initiated 💰 Order #${order.order_id} | Rajashree Fashion`,
         html: baseTemplate('Refund Initiated', content)
     }
 }
@@ -324,7 +460,7 @@ serve(async (req) => {
             }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
         }
 
-        // Fetch order items
+        // Fetch order items with SKU
         const { data: orderItems } = await adminClient
             .from('order_items')
             .select(`
