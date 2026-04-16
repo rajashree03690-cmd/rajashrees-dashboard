@@ -207,25 +207,40 @@ serve(async (req) => {
             }
         }
 
+        // ✅ Generate next variant_id (table has no auto-increment)
+        const { data: maxVariantRow } = await supabase
+            .from("product_variants")
+            .select("variant_id")
+            .order("variant_id", { ascending: false })
+            .limit(1)
+            .single();
+
+        let nextVariantId = (maxVariantRow?.variant_id || 100000) + 1;
+        console.log("✅ Starting variant_id from:", nextVariantId);
+
         // ✅ Helper: normalize variant data from both old and new frontend format
-        const normalizeVariant = (variant: any, isVariantFlag: boolean) => ({
-            product_id: masterProduct.product_id,
-            variant_name: variant.variant_name || `${body.name} - ${variant.size || 'Default'}`,
-            sku: variant.sku || `${body.sku}-${variant.size || 'default'}`,
-            saleprice: parseFloat(variant.saleprice ?? variant.sale_price ?? 0) || 0,
-            regularprice: parseFloat(variant.regularprice ?? variant.regular_price ?? 0) || 0,
-            costprice: parseFloat(variant.costprice ?? variant.cost_price ?? 0) || null,
-            stock: parseInt(variant.stock ?? variant.stock_quantity ?? 0) || 0,
-            weight: parseFloat(variant.weight) || null,
-            length: variant.length || null,
-            size: variant.size || null,
-            color: variant.color || null,
-            image_url: variant.image_url || imageUrl || null,
-            image_2_url: variant.image_2_url || image2Url || null,
-            image_3_url: variant.image_3_url || image3Url || null,
-            is_variant: isVariantFlag,
-            "is_Active": true,
-        });
+        const normalizeVariant = (variant: any, isVariantFlag: boolean) => {
+            const vid = nextVariantId++;
+            return {
+                variant_id: vid,
+                product_id: masterProduct.product_id,
+                variant_name: variant.variant_name || `${body.name} - ${variant.size || 'Default'}`,
+                sku: variant.sku || `${body.sku}-${variant.size || 'default'}`,
+                saleprice: parseFloat(variant.saleprice ?? variant.sale_price ?? 0) || 0,
+                regularprice: parseFloat(variant.regularprice ?? variant.regular_price ?? 0) || 0,
+                costprice: parseFloat(variant.costprice ?? variant.cost_price ?? 0) || null,
+                stock: parseInt(variant.stock ?? variant.stock_quantity ?? 0) || 0,
+                weight: parseFloat(variant.weight) || null,
+                length: variant.length || null,
+                size: variant.size || null,
+                color: variant.color || null,
+                image_url: variant.image_url || imageUrl || null,
+                image_2_url: variant.image_2_url || image2Url || null,
+                image_3_url: variant.image_3_url || image3Url || null,
+                is_variant: isVariantFlag,
+                "is_Active": true,
+            };
+        };
 
         // ✅ Variants insert
         if (body.has_variant && Array.isArray(body.variants) && body.variants.length > 0) {
