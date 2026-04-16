@@ -16,10 +16,10 @@ const corsHeaders = {
  */
 
 // Logo URL (public hosted)
-const LOGO_URL = 'https://rajashreefashions.com/rajashree-logo.png'
+const LOGO_URL = 'https://www.rajashreefashions.com/logo.jpg?v=2'
 const SITE_URL = 'https://rajashreefashions.com'
 
-// ─── HTML Templates ───────────────────────────────────────────────
+// â”€â”€â”€ HTML Templates â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function baseTemplate(title: string, content: string, footerNote?: string) {
     return `
@@ -198,7 +198,7 @@ function itemsTableHtml(items: any[]) {
     </table>`
 }
 
-// ─── Email Builders ───────────────────────────────────────────────
+// â”€â”€â”€ Email Builders â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function orderReceivedEmail(order: any, items: any[]) {
     const content = `
@@ -232,7 +232,7 @@ function orderReceivedEmail(order: any, items: any[]) {
     </div>
     
     <div style="background:linear-gradient(135deg,#fff8e1,#faf7f0);border:1px solid #f0ead6;border-radius:12px;padding:18px;margin-top:20px;text-align:center;">
-      <p style="margin:0;color:#735c00;font-weight:600;">🕐 Your order will be processed and shipped within <strong>8-10 business days</strong>.</p>
+      <p style="margin:0;color:#735c00;font-weight:600;">🕒 Your order will be processed and shipped within <strong>8-10 business days</strong>.</p>
       <p style="margin:8px 0 0;font-size:13px;color:#8b7a2e;">We'll send you updates at every step!</p>
     </div>
 
@@ -308,7 +308,7 @@ function orderDispatchedEmail(order: any, items: any[], trackingId?: string, car
     <div class="tracking-box">
       <p style="margin:0 0 8px;font-size:11px;color:#8b7a2e;letter-spacing:3px;text-transform:uppercase;font-family:Arial,sans-serif;">Tracking ID</p>
       <div class="tracking-id">${trackingId}</div>
-      ${trackingLink ? `<p style="margin:16px 0 0"><a href="${trackingLink}" class="btn btn-cherry" target="_blank">🔍 Track Your Shipment</a></p>` : ''}
+      ${trackingLink ? `<p style="margin:16px 0 0"><a href="${trackingLink}" class="btn btn-cherry" target="_blank">ðŸ” Track Your Shipment</a></p>` : ''}
     </div>
     ` : ''}
 
@@ -322,7 +322,7 @@ function orderDispatchedEmail(order: any, items: any[], trackingId?: string, car
     </div>
     
     <div style="background:linear-gradient(135deg,#fce4ec,#fff0f3);border:1px solid #f8bbd0;border-radius:12px;padding:18px;text-align:center;margin-top:20px;">
-      <p style="margin:0;color:#af2b3e;font-weight:600;">🎁 Estimated delivery: <strong>3-5 business days</strong> from dispatch date.</p>
+      <p style="margin:0;color:#af2b3e;font-weight:600;">ðŸŽ Estimated delivery: <strong>3-5 business days</strong> from dispatch date.</p>
     </div>
     `
     return {
@@ -379,7 +379,7 @@ function refundInitiatedEmail(order: any, refundAmount: number, refundId?: strin
     </div>
     
     <div style="background:linear-gradient(135deg,#fff8e1,#faf7f0);border:2px solid #d4af37;border-radius:12px;padding:20px;margin:24px 0;">
-      <p style="margin:0;font-weight:700;color:#735c00;font-size:16px;">⏱️ Refund Timeline</p>
+      <p style="margin:0;font-weight:700;color:#735c00;font-size:16px;">â±ï¸ Refund Timeline</p>
       <div style="background:#fff;border-radius:8px;padding:16px;margin-top:12px;border:1px solid #f0ead6;">
         <table style="width:100%;font-size:14px;">
           <tr>
@@ -410,7 +410,7 @@ function refundInitiatedEmail(order: any, refundAmount: number, refundId?: strin
     }
 }
 
-// ─── Main Handler ─────────────────────────────────────────────────
+// â”€â”€â”€ Main Handler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 serve(async (req) => {
     if (req.method === 'OPTIONS') {
@@ -453,7 +453,7 @@ serve(async (req) => {
         // Get customer email
         const customerEmail = order.customers?.email
         if (!customerEmail) {
-            console.log(`⚠️ No email found for order ${order_id}, skipping notification`)
+            console.log(`âš ï¸ No email found for order ${order_id}, skipping notification`)
             return new Response(JSON.stringify({
                 success: false,
                 error: 'No customer email found'
@@ -515,7 +515,7 @@ serve(async (req) => {
         let emailResponse: Response | null = null
         for (let attempt = 0; attempt < 3; attempt++) {
             if (attempt > 0) {
-                console.log(`⏳ Rate-limit retry ${attempt}/3, waiting ${attempt * 1500}ms...`)
+                console.log(`â³ Rate-limit retry ${attempt}/3, waiting ${attempt * 1500}ms...`)
                 await new Promise(r => setTimeout(r, attempt * 1500))
             }
 
@@ -536,21 +536,21 @@ serve(async (req) => {
 
             emailResult = await emailResponse.json()
 
-            if (emailResponse.ok) break // Success — exit retry loop
+            if (emailResponse.ok) break // Success â€” exit retry loop
 
             if (emailResponse.status === 429) {
-                console.warn(`⚠️ Resend 429 rate limit hit (attempt ${attempt + 1}/3)`)
+                console.warn(`âš ï¸ Resend 429 rate limit hit (attempt ${attempt + 1}/3)`)
                 continue // Retry after delay
             }
 
-            // Non-rate-limit error — don't retry
-            console.error('❌ Resend error:', emailResult)
+            // Non-rate-limit error â€” don't retry
+            console.error('âŒ Resend error:', emailResult)
             throw new Error(emailResult.message || 'Email send failed')
         }
 
         if (!emailResponse?.ok) {
-            console.error('❌ Resend rate limit exhausted after 3 retries')
-            // Return success:false but DON'T throw — prevents worker starvation
+            console.error('âŒ Resend rate limit exhausted after 3 retries')
+            // Return success:false but DON'T throw â€” prevents worker starvation
             return new Response(JSON.stringify({
                 success: false,
                 error: 'Rate limited by email provider, will retry later',
@@ -573,7 +573,7 @@ serve(async (req) => {
         })
 
     } catch (error: any) {
-        console.error('❌ Order notification error:', error)
+        console.error('âŒ Order notification error:', error)
         return new Response(JSON.stringify({
             success: false,
             error: error.message || 'Failed to send notification',
