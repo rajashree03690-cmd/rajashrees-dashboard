@@ -17,7 +17,7 @@ import { toast } from 'sonner';
 interface Category {
     id: number;
     name: string;
-    is_Active?: boolean;
+    is_active?: boolean;
     image_url?: string;
 }
 
@@ -25,7 +25,7 @@ interface Subcategory {
     subcategory_id: number;
     name: string;
     category_id: number;
-    is_Active?: boolean;
+    is_active?: boolean;
     categories?: { id: number; name: string };
 }
 
@@ -183,18 +183,28 @@ export default function CategoriesPage() {
     };
 
     const toggleCategoryActive = async (cat: Category) => {
-        const newStatus = !(cat.is_Active ?? true);
+        const newStatus = !(cat.is_active ?? true);
+        // Optimistic update
+        setCategories(prev =>
+            prev.map(c => c.id === cat.id ? { ...c, is_active: newStatus } : c)
+        );
         try {
-            await fetch('/api/categories', {
+            const res = await fetch('/api/categories', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: cat.id, is_Active: newStatus }),
+                body: JSON.stringify({ id: cat.id, is_active: newStatus }),
             });
-            setCategories(prev =>
-                prev.map(c => c.id === cat.id ? { ...c, is_Active: newStatus } : c)
-            );
+            if (!res.ok) {
+                throw new Error(`Server error: ${res.status}`);
+            }
+            toast.success(newStatus ? 'Category enabled' : 'Category disabled');
         } catch (err) {
             console.error('Error toggling category:', err);
+            toast.error('Failed to update category status');
+            // Revert optimistic update
+            setCategories(prev =>
+                prev.map(c => c.id === cat.id ? { ...c, is_active: !newStatus } : c)
+            );
         }
     };
 
@@ -244,20 +254,32 @@ export default function CategoriesPage() {
     };
 
     const toggleSubcategoryActive = async (sub: Subcategory) => {
-        const newStatus = !(sub.is_Active ?? true);
+        const newStatus = !(sub.is_active ?? true);
+        // Optimistic update
+        setSubcategories(prev =>
+            prev.map(s => s.subcategory_id === sub.subcategory_id
+                ? { ...s, is_active: newStatus }
+                : s)
+        );
         try {
-            await fetch('/api/subcategories', {
+            const res = await fetch('/api/subcategories', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ subcategory_id: sub.subcategory_id, is_Active: newStatus }),
+                body: JSON.stringify({ subcategory_id: sub.subcategory_id, is_active: newStatus }),
             });
-            setSubcategories(prev =>
-                prev.map(s => s.subcategory_id === sub.subcategory_id
-                    ? { ...s, is_Active: newStatus }
-                    : s)
-            );
+            if (!res.ok) {
+                throw new Error(`Server error: ${res.status}`);
+            }
+            toast.success(newStatus ? 'Subcategory enabled' : 'Subcategory disabled');
         } catch (err) {
             console.error('Error toggling subcategory:', err);
+            toast.error('Failed to update subcategory status');
+            // Revert optimistic update
+            setSubcategories(prev =>
+                prev.map(s => s.subcategory_id === sub.subcategory_id
+                    ? { ...s, is_active: !newStatus }
+                    : s)
+            );
         }
     };
 
@@ -322,7 +344,7 @@ export default function CategoriesPage() {
                             <div>
                                 <p className="text-sm text-gray-600">Active Categories</p>
                                 <p className="text-2xl font-bold text-green-600">
-                                    {categories.filter(c => c.is_Active !== false).length}
+                                    {categories.filter(c => c.is_active !== false).length}
                                 </p>
                             </div>
                             <CheckCircle className="h-8 w-8 text-green-600" />
@@ -383,7 +405,7 @@ export default function CategoriesPage() {
                         ) : (
                             <div className="space-y-2">
                                 {filteredCategories.map((cat) => {
-                                    const isActive = cat.is_Active !== false;
+                                    const isActive = cat.is_active !== false;
                                     const isSelected = selectedCategory?.id === cat.id;
                                     return (
                                         <div
@@ -466,7 +488,7 @@ export default function CategoriesPage() {
                         ) : (
                             <div className="space-y-2">
                                 {subcategories.map((sub) => {
-                                    const isActive = sub.is_Active !== false;
+                                    const isActive = sub.is_active !== false;
                                     const parentName = sub.categories?.name || categories.find(c => c.id === sub.category_id)?.name || '-';
                                     return (
                                         <div
@@ -610,7 +632,7 @@ export default function CategoriesPage() {
                                 className="w-full border rounded-md px-3 py-2 text-sm"
                             >
                                 <option value="">Select a category</option>
-                                {categories.filter(c => c.is_Active !== false).map(cat => (
+                                {categories.filter(c => c.is_active !== false).map(cat => (
                                     <option key={cat.id} value={cat.id}>{cat.name}</option>
                                 ))}
                             </select>
