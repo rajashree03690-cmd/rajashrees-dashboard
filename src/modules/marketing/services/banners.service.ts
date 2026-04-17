@@ -6,7 +6,7 @@ export interface Banner {
     subtitle: string | null;
     image_url: string;
     redirect_url: string | null;
-    is_Active: boolean;
+    is_active: boolean;
     start_date: string | null;
     end_date: string | null;
     banner_type: string | null;   // hero, promotional, collection, sidebar, popup
@@ -87,7 +87,7 @@ export async function toggleBannerStatus(
     try {
         const { error } = await supabase
             .from('banners')
-            .update({ is_Active: isActive, updated_at: new Date().toISOString() })
+            .update({ is_active: isActive, updated_at: new Date().toISOString() })
             .eq('banner_id', bannerId);
 
         if (error) throw error;

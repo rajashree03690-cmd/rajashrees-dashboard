@@ -103,7 +103,7 @@ export function ProductFormDialog({ open, onOpenChange, onSuccess, initialProduc
     useEffect(() => {
         async function fetchCategories() {
             try {
-                const response = await fetch('/api/categories-with-subcategories');
+                const response = await fetch(`/api/categories-with-subcategories?_t=${Date.now()}`, { cache: 'no-store' });
 
                 if (response.ok) {
                     const data = await response.json();

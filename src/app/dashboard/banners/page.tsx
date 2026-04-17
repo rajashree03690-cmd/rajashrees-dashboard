@@ -134,7 +134,7 @@ export default function BannersPage() {
 
     // Stats
     const totalBanners = banners.length;
-    const activeBanners = banners.filter(b => b.is_Active).length;
+    const activeBanners = banners.filter(b => b.is_active).length;
     const typeCount = (type: string) => banners.filter(b => (b.banner_type || 'hero') === type).length;
 
     // Open Add Dialog
@@ -164,7 +164,7 @@ export default function BannersPage() {
         setRedirectUrl(banner.redirect_url || '');
         setStartDate(banner.start_date || '');
         setEndDate(banner.end_date || '');
-        setIsActive(banner.is_Active);
+        setIsActive(banner.is_active);
         setImageUrl(banner.image_url || '');
         setImageFile(null);
         setImagePreview(banner.image_url || '');
@@ -229,7 +229,7 @@ export default function BannersPage() {
                 redirect_url: redirectUrl.trim() || null,
                 start_date: startDate || null,
                 end_date: endDate || null,
-                is_Active: isActive,
+                is_active: isActive,
                 banner_type: bannerType,
                 placement: placement,
                 cta_text: ctaText.trim() || null,
@@ -504,11 +504,11 @@ export default function BannersPage() {
                                         </span>
                                     </div>
                                     <div className="absolute top-3 right-3">
-                                        <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md shadow ${banner.is_Active
+                                        <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md shadow ${banner.is_active
                                             ? 'bg-green-500 text-white'
                                             : 'bg-gray-500 text-white'
                                             }`}>
-                                            {banner.is_Active ? '● Live' : '○ Draft'}
+                                            {banner.is_active ? '● Live' : '○ Draft'}
                                         </span>
                                     </div>
                                 </div>
@@ -525,12 +525,12 @@ export default function BannersPage() {
                                         <button
                                             onClick={() => toggleStatusMutation.mutate({
                                                 bannerId: banner.banner_id,
-                                                isActive: !banner.is_Active,
+                                                isActive: !banner.is_active,
                                             })}
-                                            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors flex-shrink-0 ${banner.is_Active ? 'bg-green-500' : 'bg-gray-300'}`}
-                                            title={banner.is_Active ? 'Deactivate' : 'Activate'}
+                                            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors flex-shrink-0 ${banner.is_active ? 'bg-green-500' : 'bg-gray-300'}`}
+                                            title={banner.is_active ? 'Deactivate' : 'Activate'}
                                         >
-                                            <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform shadow ${banner.is_Active ? 'translate-x-[18px]' : 'translate-x-[3px]'}`} />
+                                            <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform shadow ${banner.is_active ? 'translate-x-[18px]' : 'translate-x-[3px]'}`} />
                                         </button>
                                     </div>
 
