@@ -14,6 +14,7 @@ import {
 import { Plus, Trash2, Edit, Copy } from 'lucide-react';
 import { marketingService } from '@/modules/marketing/services/marketing.service';
 import type { Coupon } from '@/types/marketing';
+import { toast } from 'sonner';
 
 export default function CouponsPage() {
     const [coupons, setCoupons] = useState<Coupon[]>([]);
@@ -52,18 +53,62 @@ export default function CouponsPage() {
 
     const handleSubmit = async () => {
         if (!code || !value || !startsAt || !expiresAt) {
-            alert('Please fill all required fields');
+            toast.error('Please fill all required fields (Code, Value, Start Date, Expiry Date)');
+            return;
+        }
+
+        // Code min length
+        if (code.trim().length < 3) {
+            toast.error('Coupon code must be at least 3 characters');
+            return;
+        }
+
+        // Duplicate code check (case-insensitive, exclude self in edit mode)
+        const isDuplicate = coupons.some(c => {
+            const codeMatch = c.code.toLowerCase() === code.trim().toUpperCase().toLowerCase();
+            if (editingCoupon) {
+                return codeMatch && c.id !== editingCoupon.id;
+            }
+            return codeMatch;
+        });
+        if (isDuplicate) {
+            toast.error(`Coupon code "${code.toUpperCase()}" already exists`);
+            return;
+        }
+
+        // Value range validations
+        const numValue = parseFloat(value);
+        if (type === 'percentage' && (numValue < 1 || numValue > 100)) {
+            toast.error('Percentage value must be between 1 and 100');
+            return;
+        }
+        if (type === 'fixed_amount' && numValue <= 0) {
+            toast.error('Fixed amount must be greater than 0');
+            return;
+        }
+
+        // Date validations
+        const startDate = new Date(startsAt);
+        const expiryDate = new Date(expiresAt);
+        const now = new Date();
+
+        if (!editingCoupon && startDate < new Date(now.getTime() - 60000)) {
+            toast.error('Start date cannot be in the past');
+            return;
+        }
+        if (expiryDate <= startDate) {
+            toast.error('Expiry date must be after the start date');
             return;
         }
 
         const couponData: Partial<Coupon> = {
             code: code.toUpperCase(),
             type,
-            value: parseFloat(value),
+            value: numValue,
             min_order_value: minOrderValue ? parseFloat(minOrderValue) : 0,
             usage_limit: usageLimit ? parseInt(usageLimit) : null,
-            starts_at: new Date(startsAt).toISOString(),
-            expires_at: new Date(expiresAt).toISOString(),
+            starts_at: startDate.toISOString(),
+            expires_at: expiryDate.toISOString(),
             is_Active: true,
         };
 
@@ -73,6 +118,7 @@ export default function CouponsPage() {
             await marketingService.addCoupon(couponData);
         }
 
+        toast.success(editingCoupon ? 'Coupon updated!' : 'Coupon created!');
         resetForm();
         loadCoupons();
         setShowDialog(false);

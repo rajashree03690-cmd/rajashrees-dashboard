@@ -198,6 +198,7 @@ export default function VendorsPage() {
                 onOpenChange={handleDialogClose}
                 onSuccess={loadVendors}
                 initialVendor={editingVendor}
+                vendors={vendors}
             />
         </div>
     );

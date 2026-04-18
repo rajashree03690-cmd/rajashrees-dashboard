@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -98,6 +98,15 @@ export default function AddProductPage() {
     const [loading, setLoading] = useState(false);
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
 
+    // Field-level validation errors
+    const [skuError, setSkuError] = useState('');
+    const [nameError, setNameError] = useState('');
+    const [priceError, setPriceError] = useState('');
+    const [descError, setDescError] = useState('');
+    const [weightError, setWeightError] = useState('');
+    const [checkingSku, setCheckingSku] = useState(false);
+    const [checkingName, setCheckingName] = useState(false);
+
     // Inline add states
     const [showAddCategory, setShowAddCategory] = useState(false);
     const [newCategoryName, setNewCategoryName] = useState('');
@@ -118,6 +127,99 @@ export default function AddProductPage() {
     const [showManageCategories, setShowManageCategories] = useState(false);
     const [showManageSubcategories, setShowManageSubcategories] = useState(false);
     const [validationError, setValidationError] = useState('');
+
+    // Check if any uniqueness error blocks submission
+    const hasBlockingErrors = !!(skuError || nameError);
+
+    // ── Duplicate SKU check (onBlur) ──
+    const checkDuplicateSku = useCallback(async (skuValue: string) => {
+        const trimmed = skuValue.trim();
+        if (!trimmed) { setSkuError(''); return; }
+
+        // Format: alphanumeric, dashes, underscores only
+        if (!/^[A-Za-z0-9_-]+$/.test(trimmed)) {
+            setSkuError('SKU can only contain letters, numbers, dashes and underscores');
+            return;
+        }
+
+        setCheckingSku(true);
+        try {
+            const res = await fetch(`/api/products?search=${encodeURIComponent(trimmed)}&limit=5`);
+            const json = await res.json();
+            if (json.success && json.data?.length > 0) {
+                const match = json.data.find((p: any) => p.sku?.toLowerCase() === trimmed.toLowerCase());
+                if (match) {
+                    setSkuError(`Product with SKU "${trimmed}" already exists`);
+                    return;
+                }
+            }
+            setSkuError('');
+        } catch {
+            // Don't block on network errors
+            setSkuError('');
+        } finally {
+            setCheckingSku(false);
+        }
+    }, []);
+
+    // ── Duplicate Product Name check (onBlur) ──
+    const checkDuplicateName = useCallback(async (nameValue: string) => {
+        const trimmed = nameValue.trim();
+        if (!trimmed) { setNameError(''); return; }
+
+        if (trimmed.length < 3) {
+            setNameError('Product name must be at least 3 characters');
+            return;
+        }
+
+        setCheckingName(true);
+        try {
+            const res = await fetch(`/api/products?search=${encodeURIComponent(trimmed)}&limit=10`);
+            const json = await res.json();
+            if (json.success && json.data?.length > 0) {
+                const match = json.data.find((p: any) => p.name?.toLowerCase() === trimmed.toLowerCase());
+                if (match) {
+                    setNameError(`Product with name "${trimmed}" already exists`);
+                    return;
+                }
+            }
+            setNameError('');
+        } catch {
+            setNameError('');
+        } finally {
+            setCheckingName(false);
+        }
+    }, []);
+
+    // ── Sale vs Regular price validation ──
+    const validatePricing = useCallback((sale: string, regular: string) => {
+        const s = parseFloat(sale);
+        const r = parseFloat(regular);
+        if (s && r && s > r) {
+            setPriceError('Sale price cannot be greater than regular price');
+        } else {
+            setPriceError('');
+        }
+    }, []);
+
+    // ── Description max length ──
+    const validateDescription = useCallback((desc: string) => {
+        if (desc.length > 2000) {
+            setDescError(`Description too long (${desc.length}/2000 characters)`);
+        } else {
+            setDescError('');
+        }
+    }, []);
+
+    // ── Weight must be positive ──
+    const validateWeight = useCallback((w: string) => {
+        const val = parseFloat(w);
+        if (w && val < 0) {
+            setWeightError('Weight must be a positive number');
+        } else {
+            setWeightError('');
+        }
+    }, []);
 
     // Fetch categories and subcategories
     const fetchCategoriesData = async () => {
@@ -361,6 +463,14 @@ export default function AddProductPage() {
     // Handle form submission
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        // Block if uniqueness errors exist
+        if (hasBlockingErrors) {
+            toast.error('Please fix the validation errors before saving');
+            setSaveStatus('error');
+            return;
+        }
+
         // Validate required fields
         if (!productName.trim()) {
             setValidationError('Product name is required');
@@ -368,9 +478,21 @@ export default function AddProductPage() {
             setSaveStatus('error');
             return;
         }
+        if (productName.trim().length < 3) {
+            setValidationError('Product name must be at least 3 characters');
+            toast.error('Product name must be at least 3 characters');
+            setSaveStatus('error');
+            return;
+        }
         if (!sku.trim()) {
             setValidationError('SKU is required');
             toast.error('SKU is required');
+            setSaveStatus('error');
+            return;
+        }
+        if (!/^[A-Za-z0-9_-]+$/.test(sku.trim())) {
+            setValidationError('SKU can only contain letters, numbers, dashes and underscores');
+            toast.error('Invalid SKU format');
             setSaveStatus('error');
             return;
         }
@@ -387,6 +509,22 @@ export default function AddProductPage() {
             return;
         }
 
+        // Validate at least 1 image
+        if (images.length === 0) {
+            setValidationError('At least one product image is required');
+            toast.error('Please upload at least one product image');
+            setSaveStatus('error');
+            return;
+        }
+
+        // Validate description max length
+        if (description.length > 2000) {
+            setValidationError('Description is too long (max 2000 characters)');
+            toast.error('Description exceeds 2000 characters');
+            setSaveStatus('error');
+            return;
+        }
+
         // Validate pricing for non-variant products
         if (!hasVariants && category !== BANGLES_CATEGORY_ID && category !== ANKLETS_CATEGORY_ID) {
             if (!salePrice || parseFloat(salePrice) <= 0) {
@@ -395,9 +533,21 @@ export default function AddProductPage() {
                 setSaveStatus('error');
                 return;
             }
+            if (regularPrice && parseFloat(salePrice) > parseFloat(regularPrice)) {
+                setValidationError('Sale price cannot be greater than regular price');
+                toast.error('Sale price cannot be greater than regular price');
+                setSaveStatus('error');
+                return;
+            }
             if (!stockQty || parseInt(stockQty) < 0) {
                 setValidationError('Stock quantity is required');
                 toast.error('Stock quantity is required');
+                setSaveStatus('error');
+                return;
+            }
+            if (weight && parseFloat(weight) < 0) {
+                setValidationError('Weight must be a positive number');
+                toast.error('Weight must be positive');
                 setSaveStatus('error');
                 return;
             }
@@ -498,7 +648,7 @@ export default function AddProductPage() {
                         </Button>
                         <Button
                             onClick={handleSubmit}
-                            disabled={saveStatus === 'saving' || !productName || !category}
+                            disabled={saveStatus === 'saving' || !productName || !category || hasBlockingErrors}
                             className="rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/30 transition-all"
                         >
                             {saveStatus === 'saving' ? (
@@ -555,11 +705,17 @@ export default function AddProductPage() {
                                         <Input
                                             id="name"
                                             value={productName}
-                                            onChange={(e) => setProductName(e.target.value)}
+                                            onChange={(e) => {
+                                                setProductName(e.target.value);
+                                                if (nameError) setNameError('');
+                                            }}
+                                            onBlur={() => checkDuplicateName(productName)}
                                             placeholder="Enter product name..."
-                                            className="mt-2 h-12 rounded-xl border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                                            className={`mt-2 h-12 rounded-xl transition-all ${nameError ? 'border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-500/20' : 'border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'}`}
                                             required
                                         />
+                                        {checkingName && <p className="text-xs text-blue-500 mt-1 flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" />Checking name...</p>}
+                                        {nameError && <p className="text-xs text-red-600 mt-1 flex items-center gap-1"><AlertTriangle className="w-3 h-3" />{nameError}</p>}
                                     </div>
 
                                     <div>
@@ -569,11 +725,17 @@ export default function AddProductPage() {
                                         <Input
                                             id="sku"
                                             value={sku}
-                                            onChange={(e) => setSku(e.target.value)}
+                                            onChange={(e) => {
+                                                setSku(e.target.value);
+                                                if (skuError) setSkuError('');
+                                            }}
+                                            onBlur={() => checkDuplicateSku(sku)}
                                             placeholder="e.g., RFP-B1001"
-                                            className="mt-2 h-12 rounded-xl border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                                            className={`mt-2 h-12 rounded-xl transition-all ${skuError ? 'border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-500/20' : 'border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'}`}
                                             required
                                         />
+                                        {checkingSku && <p className="text-xs text-blue-500 mt-1 flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" />Checking SKU...</p>}
+                                        {skuError && <p className="text-xs text-red-600 mt-1 flex items-center gap-1"><AlertTriangle className="w-3 h-3" />{skuError}</p>}
                                     </div>
 
                                     <div>
@@ -597,11 +759,18 @@ export default function AddProductPage() {
                                         <Textarea
                                             id="description"
                                             value={description}
-                                            onChange={(e) => setDescription(e.target.value)}
+                                            onChange={(e) => {
+                                                setDescription(e.target.value);
+                                                validateDescription(e.target.value);
+                                            }}
                                             placeholder="Detailed product description..."
                                             rows={6}
-                                            className="mt-2 rounded-xl border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all resize-none"
+                                            className={`mt-2 rounded-xl transition-all resize-none ${descError ? 'border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-500/20' : 'border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'}`}
                                         />
+                                        <div className="flex justify-between mt-1">
+                                            {descError ? <p className="text-xs text-red-600">{descError}</p> : <span />}
+                                            <p className={`text-xs ${description.length > 2000 ? 'text-red-600' : 'text-slate-400'}`}>{description.length}/2000</p>
+                                        </div>
                                     </div>
                                 </div>
                             </CardContent>
@@ -878,7 +1047,7 @@ export default function AddProductPage() {
                                                 step="0.01"
                                                 min="0"
                                                 value={salePrice}
-                                                onChange={(e) => setSalePrice(e.target.value)}
+                                                onChange={(e) => { setSalePrice(e.target.value); validatePricing(e.target.value, regularPrice); }}
                                                 placeholder="0.00"
                                                 className="mt-2 h-11 rounded-xl border-slate-200 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
                                                 required
@@ -892,7 +1061,7 @@ export default function AddProductPage() {
                                                 step="0.01"
                                                 min="0"
                                                 value={regularPrice}
-                                                onChange={(e) => setRegularPrice(e.target.value)}
+                                                onChange={(e) => { setRegularPrice(e.target.value); validatePricing(salePrice, e.target.value); }}
                                                 placeholder="0.00"
                                                 className="mt-2 h-11 rounded-xl border-slate-200 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
                                             />
@@ -918,12 +1087,14 @@ export default function AddProductPage() {
                                                 type="number"
                                                 min="0"
                                                 value={weight}
-                                                onChange={(e) => setWeight(e.target.value)}
+                                                onChange={(e) => { setWeight(e.target.value); validateWeight(e.target.value); }}
                                                 placeholder="0"
-                                                className="mt-2 h-11 rounded-xl border-slate-200 focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+                                                className={`mt-2 h-11 rounded-xl ${weightError ? 'border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-500/20' : 'border-slate-200 focus:border-green-500 focus:ring-2 focus:ring-green-500/20'}`}
                                             />
+                                            {weightError && <p className="text-xs text-red-600 mt-1">{weightError}</p>}
                                         </div>
                                     </div>
+                                    {priceError && <p className="text-xs text-red-600 mt-2 flex items-center gap-1"><AlertTriangle className="w-3 h-3" />{priceError}</p>}
                                 </CardContent>
                             </Card>
                         )}

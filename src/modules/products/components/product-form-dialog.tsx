@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,6 +40,15 @@ export function ProductFormDialog({ open, onOpenChange, onSuccess, initialProduc
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // Field-level validation errors
+    const [skuError, setSkuError] = useState('');
+    const [nameError, setNameError] = useState('');
+    const [priceError, setPriceError] = useState('');
+    const [checkingSku, setCheckingSku] = useState(false);
+    const [checkingName, setCheckingName] = useState(false);
+
+    const hasBlockingErrors = !!(skuError || nameError);
 
     // Category/Subcategory state
     const [categories, setCategories] = useState<any[]>([]);
@@ -97,6 +106,61 @@ export function ProductFormDialog({ open, onOpenChange, onSuccess, initialProduc
             setVariants([]);
         }
         setError(null);
+        setSkuError('');
+        setNameError('');
+        setPriceError('');
+    }, [initialProduct]);
+
+    // ── Duplicate SKU check (excluding self) ──
+    const checkDuplicateSku = useCallback(async (skuValue: string) => {
+        const trimmed = skuValue.trim();
+        if (!trimmed) { setSkuError(''); return; }
+        if (initialProduct) return; // SKU is read-only in edit mode
+
+        setCheckingSku(true);
+        try {
+            const res = await fetch(`/api/products?search=${encodeURIComponent(trimmed)}&limit=5`);
+            const json = await res.json();
+            if (json.success && json.data?.length > 0) {
+                const currentId = initialProduct?.id || initialProduct?.product_id;
+                const match = json.data.find((p: any) =>
+                    p.sku?.toLowerCase() === trimmed.toLowerCase() && p.product_id !== currentId
+                );
+                if (match) {
+                    setSkuError(`SKU "${trimmed}" is already in use`);
+                    return;
+                }
+            }
+            setSkuError('');
+        } catch { setSkuError(''); }
+        finally { setCheckingSku(false); }
+    }, [initialProduct]);
+
+    // ── Duplicate Product Name check (excluding self) ──
+    const checkDuplicateName = useCallback(async (nameValue: string) => {
+        const trimmed = nameValue.trim();
+        if (!trimmed || trimmed.length < 3) {
+            setNameError(trimmed && trimmed.length < 3 ? 'Product name must be at least 3 characters' : '');
+            return;
+        }
+
+        setCheckingName(true);
+        try {
+            const res = await fetch(`/api/products?search=${encodeURIComponent(trimmed)}&limit=10`);
+            const json = await res.json();
+            if (json.success && json.data?.length > 0) {
+                const currentId = initialProduct?.id || initialProduct?.product_id;
+                const match = json.data.find((p: any) =>
+                    p.name?.toLowerCase() === trimmed.toLowerCase() && p.product_id !== currentId
+                );
+                if (match) {
+                    setNameError(`Product "${trimmed}" already exists`);
+                    return;
+                }
+            }
+            setNameError('');
+        } catch { setNameError(''); }
+        finally { setCheckingName(false); }
     }, [initialProduct]);
 
     // Fetch categories with subcategories
@@ -177,6 +241,66 @@ export function ProductFormDialog({ open, onOpenChange, onSuccess, initialProduc
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        
+        // Block if uniqueness errors
+        if (hasBlockingErrors) {
+            toast.error('Please fix validation errors before saving');
+            return;
+        }
+
+        // Required field checks
+        if (!name.trim() || name.trim().length < 3) {
+            setError('Product name must be at least 3 characters');
+            toast.error('Product name must be at least 3 characters');
+            return;
+        }
+        if (!sku.trim()) {
+            setError('SKU is required');
+            toast.error('SKU is required');
+            return;
+        }
+        if (!selectedSubcategoryId) {
+            setError('Please select a subcategory');
+            toast.error('Please select a subcategory');
+            return;
+        }
+
+        // Sale price validation for non-variant products
+        if (!hasVariants && (!salePrice || parseFloat(salePrice) <= 0)) {
+            setError('Sale price must be greater than 0');
+            toast.error('Sale price is required');
+            return;
+        }
+
+        // Sale < Regular price check
+        if (!hasVariants && regularPrice && parseFloat(salePrice) > parseFloat(regularPrice)) {
+            setError('Sale price cannot be greater than regular price');
+            toast.error('Sale price cannot exceed regular price');
+            return;
+        }
+
+        // Variant validation
+        if (hasVariants && variants.length > 0) {
+            // Check variant names
+            for (let i = 0; i < variants.length; i++) {
+                const v = variants[i];
+                if (!v.variant_name?.trim() && !v.name?.trim()) {
+                    setError(`Variant ${i + 1}: Name is required`);
+                    toast.error(`Variant ${i + 1} needs a name`);
+                    return;
+                }
+            }
+
+            // Check variant SKU uniqueness within product
+            const variantSkus = variants.map((v: any) => v.sku?.trim().toLowerCase()).filter(Boolean);
+            const duplicateSkus = variantSkus.filter((s: string, i: number) => variantSkus.indexOf(s) !== i);
+            if (duplicateSkus.length > 0) {
+                setError(`Duplicate variant SKU: "${duplicateSkus[0]}". Each variant must have a unique SKU.`);
+                toast.error('Duplicate variant SKUs found');
+                return;
+            }
+        }
+
         setLoading(true);
         setError(null);
 
@@ -347,11 +471,17 @@ export function ProductFormDialog({ open, onOpenChange, onSuccess, initialProduc
                             <Input
                                 id="name"
                                 value={name}
-                                onChange={(e) => setName(e.target.value)}
+                                onChange={(e) => {
+                                    setName(e.target.value);
+                                    if (nameError) setNameError('');
+                                }}
+                                onBlur={() => checkDuplicateName(name)}
                                 required
                                 placeholder="Enter product name"
-                                className="mt-1"
+                                className={`mt-1 ${nameError ? 'border-red-400' : ''}`}
                             />
+                            {checkingName && <p className="text-xs text-blue-500 mt-1">Checking name...</p>}
+                            {nameError && <p className="text-xs text-red-600 mt-1">{nameError}</p>}
                         </div>
 
                         {/* Description */}
@@ -680,7 +810,7 @@ export function ProductFormDialog({ open, onOpenChange, onSuccess, initialProduc
                         <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                             Cancel
                         </Button>
-                        <Button type="submit" disabled={loading}>
+                        <Button type="submit" disabled={loading || hasBlockingErrors}>
                             {loading ? 'Saving Product...' : 'Save Product'}
                         </Button>
                     </DialogFooter>

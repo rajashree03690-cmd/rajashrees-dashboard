@@ -211,7 +211,33 @@ export default function BannersPage() {
     // Handle Save
     const handleSave = async () => {
         if (!title.trim()) { toast.error('Title is required'); return; }
+        if (title.trim().length < 3) { toast.error('Banner title must be at least 3 characters'); return; }
         if (!imagePreview && !imageUrl) { toast.error('Please upload a banner image'); return; }
+
+        // Duplicate title check (case-insensitive, exclude self in edit mode)
+        const isDuplicate = banners.some(b => {
+            const titleMatch = b.title?.toLowerCase() === title.trim().toLowerCase();
+            if (editingBanner) {
+                return titleMatch && b.banner_id !== editingBanner.banner_id;
+            }
+            return titleMatch;
+        });
+        if (isDuplicate) {
+            toast.error(`Banner with title "${title.trim()}" already exists`);
+            return;
+        }
+
+        // Date validation: end date must be after start date
+        if (startDate && endDate && new Date(endDate) <= new Date(startDate)) {
+            toast.error('End date must be after the start date');
+            return;
+        }
+
+        // Redirect URL format validation
+        if (redirectUrl.trim() && !redirectUrl.trim().startsWith('/') && !redirectUrl.trim().startsWith('http')) {
+            toast.error('Redirect URL must start with "/" or "http"');
+            return;
+        }
 
         setSaving(true);
         try {

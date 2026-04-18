@@ -138,7 +138,28 @@ export default function CategoriesPage() {
     };
 
     const saveCategory = async () => {
-        if (!catName.trim()) return;
+        if (!catName.trim()) {
+            toast.error('Category name is required');
+            return;
+        }
+        if (catName.trim().length < 2) {
+            toast.error('Category name must be at least 2 characters');
+            return;
+        }
+
+        // Duplicate check (case-insensitive, exclude self in edit mode)
+        const isDuplicate = categories.some(c => {
+            const nameMatch = c.name.toLowerCase() === catName.trim().toLowerCase();
+            if (catDialog.mode === 'edit' && catDialog.category) {
+                return nameMatch && c.id !== catDialog.category.id;
+            }
+            return nameMatch;
+        });
+        if (isDuplicate) {
+            toast.error(`Category "${catName.trim()}" already exists`);
+            return;
+        }
+
         setSaving(true);
         try {
             let finalImageUrl = catImageUrl;
@@ -222,7 +243,33 @@ export default function CategoriesPage() {
     };
 
     const saveSubcategory = async () => {
-        if (!subName.trim() || !subCategoryId) return;
+        if (!subName.trim()) {
+            toast.error('Subcategory name is required');
+            return;
+        }
+        if (subName.trim().length < 2) {
+            toast.error('Subcategory name must be at least 2 characters');
+            return;
+        }
+        if (!subCategoryId) {
+            toast.error('Please select a parent category');
+            return;
+        }
+
+        // Duplicate check within same category (case-insensitive, exclude self in edit)
+        const isDuplicate = subcategories.some(s => {
+            const nameMatch = s.name.toLowerCase() === subName.trim().toLowerCase();
+            const sameCategory = s.category_id === subCategoryId;
+            if (subDialog.mode === 'edit' && subDialog.subcategory) {
+                return nameMatch && sameCategory && s.subcategory_id !== subDialog.subcategory.subcategory_id;
+            }
+            return nameMatch && sameCategory;
+        });
+        if (isDuplicate) {
+            toast.error(`Subcategory "${subName.trim()}" already exists in this category`);
+            return;
+        }
+
         setSaving(true);
         try {
             if (subDialog.mode === 'add') {
