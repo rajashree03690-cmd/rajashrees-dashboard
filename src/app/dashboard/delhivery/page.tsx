@@ -164,11 +164,10 @@ export default function DelhiveryIntegrationPage() {
             // Background sync: check Delhivery for delivery updates
             syncTrackingStatuses(enrichedShipments);
 
-            // Load vendors
             const { data: vendorData } = await supabase
                 .from('vendor')
                 .select('vendor_id, name, address, contact_number, contact_person, email')
-                .eq('is_Active', true)
+                .eq('is_active', true)
                 .order('name');
             setVendors(vendorData || []);
 
