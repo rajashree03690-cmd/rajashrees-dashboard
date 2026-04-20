@@ -146,7 +146,7 @@ export const dashboardService = {
             try {
                 const { count } = await supabase
                     .from('orders')
-                    .select('*', { count: 'exact', head: true });
+                    .select('order_id', { count: 'exact', head: true });
 
                 return count || 0;
             } catch (fallbackError) {
@@ -162,7 +162,7 @@ export const dashboardService = {
         try {
             const { count, error } = await supabase
                 .from('customers')
-                .select('*', { count: 'exact', head: true });
+                .select('customer_id', { count: 'exact', head: true });
 
             if (error) throw error;
             return count || 0;
@@ -180,7 +180,7 @@ export const dashboardService = {
             console.log('📡 Fetching product count via Direct DB Query...');
             const { count, error } = await supabase
                 .from('master_product')
-                .select('*', { count: 'exact', head: true })
+                .select('product_id', { count: 'exact', head: true })
                 .eq('is_Active', true);
 
             if (error) throw error;
