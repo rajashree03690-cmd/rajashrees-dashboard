@@ -70,12 +70,7 @@ export function AppBar() {
                         </Badge>
                     </button>
 
-                    {/* Settings */}
-                    <Link href="/dashboard/settings">
-                        <button className="p-2 hover:bg-gray-100 rounded-lg transition group">
-                            <Settings className="h-5 w-5 text-gray-600 group-hover:text-indigo-600 transition" />
-                        </button>
-                    </Link>
+
 
                     {/* Divider */}
                     <div className="h-8 w-px bg-gray-200"></div>
@@ -116,9 +111,11 @@ export function AppBar() {
                                     <span>Role Management</span>
                                 </Link>
                             </DropdownMenuItem>
-                            <DropdownMenuItem>
-                                <Settings className="mr-2 h-4 w-4" />
-                                <span>Settings</span>
+                            <DropdownMenuItem asChild>
+                                <Link href="/dashboard/settings">
+                                    <Settings className="mr-2 h-4 w-4" />
+                                    <span>Settings</span>
+                                </Link>
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
