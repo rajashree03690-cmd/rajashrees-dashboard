@@ -4,7 +4,7 @@
  */
 
 import { createClient } from '@/lib/supabase/client';
-import { getTenantFilter } from '@/lib/tenant';
+import { getTenantFilter, applyTenantFilter } from '@/lib/tenant';
 import type {
     ThemeSettings,
     ThemeSettingsFormData,
@@ -18,11 +18,9 @@ const supabase = createClient();
 // =====================================================
 
 export async function getThemeSettings(): Promise<ThemeSettings | null> {
-    const { data, error } = await supabase
-        .from('theme_settings')
-        .select('*')
-        .eq('tenant_id', getTenantFilter())
-        .single();
+    const { data, error } = await applyTenantFilter(
+        supabase.from('theme_settings').select('*')
+    ).single();
 
     if (error) {
         console.error('Error fetching theme settings:', error);
@@ -40,14 +38,15 @@ export async function updateThemeSettings(updates: ThemeSettingsFormData): Promi
     const tokens = generateThemeTokens(updates);
 
     if (existing) {
-        const { data, error } = await supabase
-            .from('theme_settings')
-            .update({
-                ...updates,
-                theme_tokens: tokens,
-                updated_at: new Date().toISOString()
-            })
-            .eq('tenant_id', tenantId)
+        const { data, error } = await applyTenantFilter(
+            supabase
+                .from('theme_settings')
+                .update({
+                    ...updates,
+                    theme_tokens: tokens,
+                    updated_at: new Date().toISOString()
+                })
+        )
             .select()
             .single();
 

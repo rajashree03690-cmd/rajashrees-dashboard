@@ -4,7 +4,7 @@
  */
 
 import { createClient } from '@/lib/supabase/client';
-import { getTenantFilter } from '@/lib/tenant';
+import { getTenantFilter, applyTenantFilter } from '@/lib/tenant';
 import type {
     AppSettings,
     CompanySettings,
@@ -23,11 +23,9 @@ const supabase = createClient();
 // =====================================================
 
 export async function getAppSettings(): Promise<AppSettings | null> {
-    const { data, error } = await supabase
-        .from('app_settings')
-        .select('*')
-        .eq('tenant_id', getTenantFilter())
-        .single();
+    const { data, error } = await applyTenantFilter(
+        supabase.from('app_settings').select('*')
+    ).single();
 
     if (error) {
         console.error('Error fetching app settings:', error);
@@ -45,10 +43,11 @@ export async function updateAppSettings(updates: AppSettingsFormData): Promise<A
 
     if (existing) {
         // Update existing
-        const { data, error } = await supabase
-            .from('app_settings')
-            .update({ ...updates, updated_at: new Date().toISOString() })
-            .eq('tenant_id', tenantId)
+        const { data, error } = await applyTenantFilter(
+            supabase
+                .from('app_settings')
+                .update({ ...updates, updated_at: new Date().toISOString() })
+        )
             .select()
             .single();
 
@@ -80,11 +79,9 @@ export async function updateAppSettings(updates: AppSettingsFormData): Promise<A
 // =====================================================
 
 export async function getCompanySettings(): Promise<CompanySettings | null> {
-    const { data, error } = await supabase
-        .from('company_settings')
-        .select('*')
-        .eq('tenant_id', getTenantFilter())
-        .single();
+    const { data, error } = await applyTenantFilter(
+        supabase.from('company_settings').select('*')
+    ).single();
 
     if (error) {
         console.error('Error fetching company settings:', error);
@@ -99,10 +96,11 @@ export async function updateCompanySettings(updates: CompanySettingsFormData): P
     const existing = await getCompanySettings();
 
     if (existing) {
-        const { data, error } = await supabase
-            .from('company_settings')
-            .update({ ...updates, updated_at: new Date().toISOString() })
-            .eq('tenant_id', tenantId)
+        const { data, error } = await applyTenantFilter(
+            supabase
+                .from('company_settings')
+                .update({ ...updates, updated_at: new Date().toISOString() })
+        )
             .select()
             .single();
 
@@ -133,11 +131,9 @@ export async function updateCompanySettings(updates: CompanySettingsFormData): P
 // =====================================================
 
 export async function getSecuritySettings(): Promise<SecuritySettings | null> {
-    const { data, error } = await supabase
-        .from('security_settings')
-        .select('*')
-        .eq('tenant_id', getTenantFilter())
-        .single();
+    const { data, error } = await applyTenantFilter(
+        supabase.from('security_settings').select('*')
+    ).single();
 
     if (error) {
         console.error('Error fetching security settings:', error);
@@ -152,10 +148,11 @@ export async function updateSecuritySettings(updates: SecuritySettingsFormData):
     const existing = await getSecuritySettings();
 
     if (existing) {
-        const { data, error } = await supabase
-            .from('security_settings')
-            .update({ ...updates, updated_at: new Date().toISOString() })
-            .eq('tenant_id', tenantId)
+        const { data, error } = await applyTenantFilter(
+            supabase
+                .from('security_settings')
+                .update({ ...updates, updated_at: new Date().toISOString() })
+        )
             .select()
             .single();
 

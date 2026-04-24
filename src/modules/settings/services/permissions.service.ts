@@ -20,18 +20,18 @@ const supabase = createClient();
 export async function checkPermission(userId: string, permissionKey: string): Promise<boolean> {
     try {
         // Get user's role (string, e.g. 'admin')
-        const { data: user } = await supabase
+        const { data: user, error: userError } = await supabase
             .from('dashboard_users')
             .select('role')
             .eq('id', userId)
             .single();
-
+        
         if (!user || !user.role) {
             return false;
         }
 
         // Map role string to role_id
-        const { data: roleData } = await supabase
+        const { data: roleData, error: roleError } = await supabase
             .from('roles')
             .select('role_id')
             .ilike('role_name', user.role)
