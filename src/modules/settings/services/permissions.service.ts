@@ -19,14 +19,25 @@ const supabase = createClient();
 
 export async function checkPermission(userId: string, permissionKey: string): Promise<boolean> {
     try {
-        // Get user's role
+        // Get user's role (string, e.g. 'admin')
         const { data: user } = await supabase
             .from('dashboard_users')
-            .select('role_id')
+            .select('role')
             .eq('id', userId)
             .single();
 
-        if (!user || !user.role_id) {
+        if (!user || !user.role) {
+            return false;
+        }
+
+        // Map role string to role_id
+        const { data: roleData } = await supabase
+            .from('roles')
+            .select('role_id')
+            .ilike('role_name', user.role)
+            .single();
+
+        if (!roleData || !roleData.role_id) {
             return false;
         }
 
@@ -37,7 +48,7 @@ export async function checkPermission(userId: string, permissionKey: string): Pr
         permission_id,
         permissions!inner(permission_name)
       `)
-            .eq('role_id', user.role_id)
+            .eq('role_id', roleData.role_id)
             .eq('permissions.permission_name', permissionKey)
             .limit(1);
 
@@ -57,11 +68,22 @@ export async function getUserPermissions(userId: string): Promise<Permission[]> 
     try {
         const { data: user } = await supabase
             .from('dashboard_users')
-            .select('role_id')
+            .select('role')
             .eq('id', userId)
             .single();
 
-        if (!user || !user.role_id) {
+        if (!user || !user.role) {
+            return [];
+        }
+
+        // Map role string to role_id
+        const { data: roleData } = await supabase
+            .from('roles')
+            .select('role_id')
+            .ilike('role_name', user.role)
+            .single();
+
+        if (!roleData || !roleData.role_id) {
             return [];
         }
 
@@ -70,7 +92,7 @@ export async function getUserPermissions(userId: string): Promise<Permission[]> 
             .select(`
         permissions(*)
       `)
-            .eq('role_id', user.role_id);
+            .eq('role_id', roleData.role_id);
 
         if (error) {
             console.error('Error fetching user permissions:', error);
