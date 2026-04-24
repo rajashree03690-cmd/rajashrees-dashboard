@@ -70,7 +70,7 @@ export function useUserPermissions() {
     }, []);
 
     const hasPermission = (key: string) => {
-        return permissions.some(p => p.key === key);
+        return permissions.some(p => p.permission_name === key);
     };
 
     return { permissions, hasPermission, loading };

@@ -75,21 +75,20 @@ export interface SecuritySettings {
 // =====================================================
 
 export interface Role {
-    id: string;
-    tenant_id: string | null;
-    name: string;
+    role_id: string;
+    role_name: string;
     description: string | null;
-    is_system: boolean;
+    is_system_role: boolean;
     created_at: string;
     updated_at: string;
 }
 
 export interface Permission {
-    id: string;
-    key: string;
-    name: string;
+    permission_id: string;
+    permission_name: string;
+    module: string | null;
+    action: string | null;
     description: string | null;
-    category: string | null;
     created_at: string;
 }
 

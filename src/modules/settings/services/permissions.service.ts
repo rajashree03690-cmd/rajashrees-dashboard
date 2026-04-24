@@ -35,10 +35,10 @@ export async function checkPermission(userId: string, permissionKey: string): Pr
             .from('role_permissions')
             .select(`
         permission_id,
-        permissions!inner(key)
+        permissions!inner(permission_name)
       `)
             .eq('role_id', user.role_id)
-            .eq('permissions.key', permissionKey)
+            .eq('permissions.permission_name', permissionKey)
             .limit(1);
 
         if (error) {
@@ -92,8 +92,7 @@ export async function getRoles(): Promise<Role[]> {
     const { data, error } = await supabase
         .from('roles')
         .select('*')
-        .eq('tenant_id', getTenantFilter())
-        .order('name');
+        .order('role_name');
 
     if (error) {
         console.error('Error fetching roles:', error);
@@ -107,7 +106,7 @@ export async function getRoleWithPermissions(roleId: string): Promise<RoleWithPe
     const { data: role, error: roleError } = await supabase
         .from('roles')
         .select('*')
-        .eq('id', roleId)
+        .eq('role_id', roleId)
         .single();
 
     if (roleError || !role) {
@@ -142,10 +141,9 @@ export async function createRole(name: string, description: string, permissionId
     const { data: role, error: roleError } = await supabase
         .from('roles')
         .insert({
-            name,
+            role_name: name,
             description,
-            tenant_id: tenantId,
-            is_system: false,
+            is_system_role: false,
         })
         .select()
         .single();
@@ -158,7 +156,7 @@ export async function createRole(name: string, description: string, permissionId
     // Assign permissions
     if (permissionIds.length > 0) {
         const rolePermissions = permissionIds.map(permId => ({
-            role_id: role.id,
+            role_id: role.role_id,
             permission_id: permId,
         }));
 
@@ -210,11 +208,11 @@ export async function deleteRole(roleId: string): Promise<boolean> {
     // Don't allow deleting system roles
     const { data: role } = await supabase
         .from('roles')
-        .select('is_system')
-        .eq('id', roleId)
+        .select('is_system_role')
+        .eq('role_id', roleId)
         .single();
 
-    if (role?.is_system) {
+    if (role?.is_system_role) {
         console.error('Cannot delete system role');
         return false;
     }
@@ -222,7 +220,7 @@ export async function deleteRole(roleId: string): Promise<boolean> {
     const { error } = await supabase
         .from('roles')
         .delete()
-        .eq('id', roleId);
+        .eq('role_id', roleId);
 
     if (error) {
         console.error('Error deleting role:', error);
