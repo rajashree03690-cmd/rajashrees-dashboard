@@ -8,6 +8,7 @@
 import { useState, useEffect } from 'react';
 import { useAppSettings, useUpdateAppSettings } from '@/modules/settings/hooks/use-settings';
 import { usePermission } from '@/hooks/use-permission';
+import { useIsAdmin } from '@/hooks/useUser';
 import { Save, AlertTriangle, Construction } from 'lucide-react';
 
 const TIMEZONES = [
@@ -29,7 +30,9 @@ const CURRENCIES = [
 export default function GeneralPage() {
     const { data: settings, isLoading } = useAppSettings();
     const updateSettings = useUpdateAppSettings();
-    const { hasPermission: canEdit } = usePermission('settings.general.edit');
+    const { hasPermission } = usePermission('settings.general.edit');
+    const { isAdmin } = useIsAdmin();
+    const canEdit = hasPermission || isAdmin;
 
     const [formData, setFormData] = useState({
         app_name: '',
