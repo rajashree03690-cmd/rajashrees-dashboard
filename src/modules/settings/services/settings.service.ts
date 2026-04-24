@@ -36,41 +36,49 @@ export async function getAppSettings(): Promise<AppSettings | null> {
 }
 
 export async function updateAppSettings(updates: AppSettingsFormData): Promise<AppSettings | null> {
-    const tenantId = getTenantFilter();
-
-    // Check if settings exist
     const existing = await getAppSettings();
 
     if (existing) {
-        // Update existing
-        const { data, error } = await applyTenantFilter(
-            supabase
-                .from('app_settings')
-                .update({ ...updates, updated_at: new Date().toISOString() })
-        )
-            .select()
-            .single();
+        try {
+            const response = await fetch('/api/admin/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: existing.id, updates })
+            });
 
-        if (error) {
-            console.error('Error updating app settings:', error);
+            if (!response.ok) {
+                const error = await response.json();
+                console.error('Error updating app settings via API:', error);
+                return null;
+            }
+
+            const data = await response.json();
+            return data;
+        } catch (error) {
+            console.error('Failed to call update settings API:', error);
             return null;
         }
-
-        return data;
     } else {
         // Create new
-        const { data, error } = await supabase
-            .from('app_settings')
-            .insert({ ...updates, tenant_id: tenantId })
-            .select()
-            .single();
+        try {
+            const response = await fetch('/api/admin/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ updates })
+            });
 
-        if (error) {
-            console.error('Error creating app settings:', error);
+            if (!response.ok) {
+                const error = await response.json();
+                console.error('Error creating app settings via API:', error);
+                return null;
+            }
+
+            const data = await response.json();
+            return data;
+        } catch (error) {
+            console.error('Failed to call create settings API:', error);
             return null;
         }
-
-        return data;
     }
 }
 
