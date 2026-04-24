@@ -99,7 +99,7 @@ export default function OrdersPage() {
 
     // Filter options (matching actual database values)
     const filterOptions = {
-        status: ['processing', 'Completed', 'failed', 'pending_payment', 'Cancelled'],
+        status: ['processing', 'Completed', 'failed', 'pending_payment', 'Cancelled', 'Refunded'],
         source: ['WEB', 'WhatsApp'],  // Updated to match actual DB values
     };
 
@@ -178,7 +178,16 @@ export default function OrdersPage() {
             // Status filter (case-insensitive)
             const matchesStatus =
                 selectedStatuses.length === 0 ||
-                selectedStatuses.some(s => s.toLowerCase() === order.order_status?.toLowerCase());
+                selectedStatuses.some(s => {
+                    const statusLower = s.toLowerCase();
+                    if (statusLower === 'refunded') {
+                        return order.payment_status?.toLowerCase() === 'refunded' || 
+                               order.refund_status?.toLowerCase() === 'refunded' || 
+                               order.payment_status?.toLowerCase() === 'partially_refunded' || 
+                               order.refund_status?.toLowerCase() === 'partial';
+                    }
+                    return statusLower === order.order_status?.toLowerCase();
+                });
 
             // Source filter (case-insensitive)
             const matchesSource =

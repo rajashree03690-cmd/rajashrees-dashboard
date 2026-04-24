@@ -215,7 +215,7 @@ serve(async (req) => {
         y -= 22;
         page.drawText("Chennai 600116, Tamil Nadu", { x: 30, y, size: 10, font, color: gray });
         y -= 14;
-        page.drawText("Phone: 7010041418 | GSTIN: 33GFWPS8459J1Z8", { x: 30, y, size: 10, font, color: gray });
+        page.drawText("Phone: 8056167040 | GSTIN: 33GFWPS8459J1Z8", { x: 30, y, size: 10, font, color: gray });
         y -= 10;
 
         // Thicker separator line

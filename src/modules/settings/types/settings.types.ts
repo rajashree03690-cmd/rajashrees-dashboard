@@ -14,6 +14,8 @@ export interface AppSettings {
     logo_url: string | null;
     timezone: string;
     currency: string;
+    maintenance_mode: boolean;
+    maintenance_message: string | null;
     created_at: string;
     updated_at: string;
 }
@@ -133,6 +135,8 @@ export interface AppSettingsFormData {
     logo_url?: string;
     timezone: string;
     currency: string;
+    maintenance_mode?: boolean;
+    maintenance_message?: string | null;
 }
 
 export interface CompanySettingsFormData {

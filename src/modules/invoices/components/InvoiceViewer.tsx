@@ -212,6 +212,7 @@ export default function InvoiceViewer({ open, onClose, orderId }: InvoiceViewerP
                                     <tr key={idx} className="border-b border-gray-100 text-gray-700">
                                         <td className="py-3 px-3">
                                             <p>{item.product_name}</p>
+                                            {item.sku && <p className="text-sm text-gray-500">{item.sku}</p>}
                                         </td>
                                         <td className="text-right py-3 px-3">Rs.{item.unit_price.toFixed(2)}</td>
                                         <td className="text-right py-3 px-3">{item.quantity}</td>

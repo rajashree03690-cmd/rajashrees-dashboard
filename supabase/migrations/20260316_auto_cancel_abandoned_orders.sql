@@ -6,13 +6,16 @@ SECURITY DEFINER
 AS $$
 BEGIN
   -- Cancel orders that are 'awaiting_payment' or 'pending_payment' and older than 15 minutes
+  -- SAFETY: Never overwrite orders that have already been paid/refunded (race condition protection)
   UPDATE public.orders
   SET 
     order_status = 'failed',
     payment_status = 'failed',
-    order_note = COALESCE(order_note || CHR(10), '') || 'Auto-cancelled: Payment timeout after 15 minutes'
+    order_note = COALESCE(order_note || CHR(10), '') || 'Auto-cancelled: Payment timeout after 15 minutes',
+    updated_at = NOW()
   WHERE 
     (order_status = 'awaiting_payment' OR order_status = 'pending_payment')
+    AND payment_status NOT IN ('paid', 'refunded', 'partially_refunded')
     AND created_at < NOW() - INTERVAL '15 minutes';
 END;
 $$;

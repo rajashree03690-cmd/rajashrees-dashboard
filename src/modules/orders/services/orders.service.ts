@@ -71,8 +71,17 @@ export const ordersService = {
 
             if (!response.ok) throw new Error('Failed to fetch order items');
 
-            const data = await response.json();
-            return data.items || [];
+            const json = await response.json();
+            
+            // The edge function returns { data: { items: [...] } }
+            const items = json.data?.items || json.items || [];
+            
+            if (items.length > 0) {
+                return items;
+            }
+            
+            // If empty, let it fall through to the fallback just to be safe
+            throw new Error('No items returned from Edge Function');
         } catch (error) {
             console.error('Error fetching order items:', error);
 
