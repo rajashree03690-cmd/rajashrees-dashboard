@@ -44,10 +44,24 @@ export function usePermission(permissionKey: string) {
 export function useUserPermissions() {
     const [permissions, setPermissions] = useState<Permission[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isAdminRole, setIsAdminRole] = useState(false);
 
     useEffect(() => {
         async function loadPermissions() {
             try {
+                // Check if admin first
+                if (typeof window !== 'undefined') {
+                    const storedUser = localStorage.getItem('dashboard_user');
+                    if (storedUser) {
+                        const user = JSON.parse(storedUser);
+                        if (user.role && user.role.toLowerCase() === 'admin') {
+                            setIsAdminRole(true);
+                            setLoading(false);
+                            return; // Admins don't need to load specific DB permissions for UI checks
+                        }
+                    }
+                }
+
                 const userId = await getCurrentUserId();
 
                 if (!userId) {
@@ -70,21 +84,26 @@ export function useUserPermissions() {
     }, []);
 
     const hasPermission = (key: string) => {
+        // Admins automatically have all permissions
+        if (isAdminRole) return true;
         return permissions.some(p => p.permission_name === key);
     };
 
     return { permissions, hasPermission, loading };
 }
 
-// Helper to get current user ID from Supabase session
+// Helper to get current user ID from custom auth session
 async function getCurrentUserId(): Promise<string | null> {
     if (typeof window === 'undefined') return null;
 
     try {
-        const { createClient } = await import('@/lib/supabase/client');
-        const supabase = createClient();
-        const { data: { session } } = await supabase.auth.getSession();
-        return session?.user?.id || null;
+        const storedUser = localStorage.getItem('dashboard_user');
+        if (storedUser) {
+            const user = JSON.parse(storedUser);
+            // Support both id and user_id depending on how it's stored
+            return user.id || user.user_id || null;
+        }
+        return null;
     } catch (error) {
         console.error('Error getting user ID:', error);
         return null;
