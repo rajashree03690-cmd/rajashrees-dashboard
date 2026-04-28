@@ -1,44 +1,51 @@
--- Create the cleanup function
+-- ========================================================================
+-- Auto-cancel expired orders (Cron runs every 5 minutes)
+-- 
+-- SAFETY GUARDS:
+--   1. Timeout: 45 minutes (not 15) — UPI payments in India routinely
+--      take 15-25 minutes due to bank delays, OTP retries, app switching
+--   2. razorpay_payment_id IS NULL — NEVER cancel an order that already
+--      has a captured payment ID from Razorpay
+--   3. payment_status NOT IN ('paid', 'refunded', 'partially_refunded')
+--      — NEVER overwrite a paid/refunded order
+-- ========================================================================
+
 CREATE OR REPLACE FUNCTION auto_cancel_expired_orders()
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 BEGIN
-  -- Cancel orders that are 'awaiting_payment' or 'pending_payment' and older than 15 minutes
-  -- SAFETY: Never overwrite orders that have already been paid/refunded (race condition protection)
   UPDATE public.orders
   SET 
     order_status = 'failed',
     payment_status = 'failed',
-    order_note = COALESCE(order_note || CHR(10), '') || 'Auto-cancelled: Payment timeout after 15 minutes',
+    order_note = COALESCE(order_note || CHR(10), '') || 'Auto-cancelled: Payment timeout after 45 minutes',
     updated_at = NOW()
   WHERE 
     (order_status = 'awaiting_payment' OR order_status = 'pending_payment')
     AND payment_status NOT IN ('paid', 'refunded', 'partially_refunded')
-    AND created_at < NOW() - INTERVAL '15 minutes';
+    AND razorpay_payment_id IS NULL
+    AND created_at < NOW() - INTERVAL '45 minutes';
 END;
 $$;
 
--- Safely schedule the cron job
-DO $$
-BEGIN
-  -- First check if pg_cron is available
-  IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN
-  
-    -- Try to unschedule if it exists (ignore error if it doesn't)
-    BEGIN
-      PERFORM cron.unschedule('auto-cancel-abandoned-orders');
-    EXCEPTION WHEN OTHERS THEN
-      -- Job doesn't exist yet, which is fine
-    END;
-    
-    -- Schedule it to run every 5 minutes
-    PERFORM cron.schedule(
-      'auto-cancel-abandoned-orders',
-      '*/5 * * * *',
-      'SELECT auto_cancel_expired_orders();'
-    );
-    
-  END IF;
-END $$;
+-- Schedule: every 5 minutes
+-- SELECT cron.schedule('auto-cancel-expired-orders', '*/5 * * * *', 'SELECT auto_cancel_expired_orders();');
+
+-- ========================================================================
+-- Reconciliation Cron Job (runs every 10 minutes)
+-- Calls the reconcile-payments edge function to check Razorpay API
+-- for any captured payments on failed orders
+-- ========================================================================
+-- SELECT cron.schedule(
+--   'reconcile-payments-job',
+--   '*/10 * * * *',
+--   $$
+--   SELECT net.http_post(
+--     url := 'https://gvsorguincvinuiqtooo.supabase.co/functions/v1/reconcile-payments',
+--     headers := '{"Content-Type": "application/json"}'::jsonb,
+--     body := '{}'::jsonb
+--   );
+--   $$
+-- );

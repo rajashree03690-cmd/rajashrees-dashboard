@@ -16,6 +16,19 @@ export function usePermission(permissionKey: string) {
     useEffect(() => {
         async function checkUserPermission() {
             try {
+                // Check if admin first
+                if (typeof window !== 'undefined') {
+                    const storedUser = localStorage.getItem('dashboard_user');
+                    if (storedUser) {
+                        const user = JSON.parse(storedUser);
+                        if (user.role && user.role.toLowerCase() === 'admin') {
+                            setHasPermission(true);
+                            setLoading(false);
+                            return; // Admins automatically have all permissions
+                        }
+                    }
+                }
+
                 // Get current user ID from session
                 const userId = await getCurrentUserId();
 

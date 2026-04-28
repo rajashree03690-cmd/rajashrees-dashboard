@@ -9,14 +9,10 @@ const corsHeaders = {
 /**
  * Payment Reconciliation Edge Function
  * 
- * Safety net that runs periodically (via pg_cron or manual trigger) to catch
- * any payments that were captured on Razorpay but not reflected in the database.
+ * Safety net that runs every 10 min (via pg_cron) to catch
+ * any payments captured on Razorpay but not reflected in the database.
  * 
- * Flow:
- * 1. Query orders table for failed/pending orders from last 48 hours
- * 2. For each order with a razorpay_order_id, check Razorpay API
- * 3. If Razorpay shows payment captured, auto-fix the order
- * 4. Log everything to order_events
+ * Accepts optional body: { lookback_hours: number } (default: 96)
  */
 serve(async (req) => {
     if (req.method === 'OPTIONS') {
@@ -26,27 +22,31 @@ serve(async (req) => {
     try {
         const supabaseUrl = Deno.env.get('SUPABASE_URL')!
         const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-        const rzpKeyId = Deno.env.get('RAZORPAY_KEY_ID') || Deno.env.get('RAZORPAY_KEY')
-        const rzpKeySecret = Deno.env.get('RAZORPAY_KEY_SECRET') || Deno.env.get('RAZORPAY_SECRET')
+        const rzpKeyId = Deno.env.get('RAZORPAY_KEY')
+        const rzpKeySecret = Deno.env.get('RAZORPAY_SECRET')
 
         if (!rzpKeyId || !rzpKeySecret) {
-            throw new Error('Razorpay credentials not configured')
+            throw new Error('Razorpay credentials not configured (RAZORPAY_KEY / RAZORPAY_SECRET)')
         }
 
         const adminClient = createClient(supabaseUrl, supabaseServiceKey)
         const rzpAuth = btoa(`${rzpKeyId}:${rzpKeySecret}`)
 
-        // 1. Find orders that might need reconciliation
-        //    - Status is failed, pending_payment, or awaiting_payment
-        //    - Created in the last 48 hours
-        //    - Has a razorpay_order_id (so we can check Razorpay)
-        const cutoffDate = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
+        // Accept custom lookback hours from body, default to 96
+        let lookbackHours = 96;
+        try {
+            const body = await req.json();
+            if (body?.lookback_hours) lookbackHours = body.lookback_hours;
+        } catch { /* no body or invalid JSON, use default */ }
+
+        const cutoffDate = new Date(Date.now() - lookbackHours * 60 * 60 * 1000).toISOString()
 
         const { data: suspectOrders, error: fetchError } = await adminClient
             .from('orders')
             .select('order_id, razorpay_order_id, payment_status, order_status, payment_transaction_id, created_at')
             .in('payment_status', ['failed', 'awaiting_payment', 'pending'])
             .not('razorpay_order_id', 'is', null)
+            .is('razorpay_payment_id', null)
             .gte('created_at', cutoffDate)
             .order('created_at', { ascending: false })
 
@@ -66,12 +66,11 @@ serve(async (req) => {
             })
         }
 
-        console.log(`🔍 Found ${suspectOrders.length} suspect orders to check against Razorpay`)
+        console.log(`🔍 Found ${suspectOrders.length} suspect orders to check against Razorpay (lookback: ${lookbackHours}h)`)
 
         const results: any[] = []
         let fixedCount = 0
 
-        // 2. For each suspect order, check Razorpay for captured payments
         for (const order of suspectOrders) {
             try {
                 const rzpResponse = await fetch(
@@ -96,63 +95,30 @@ serve(async (req) => {
                 const rzpData = await rzpResponse.json()
                 const payments = rzpData.items || []
 
-                // Find any captured payment
                 const capturedPayment = payments.find((p: any) => p.status === 'captured')
 
                 if (capturedPayment) {
                     console.log(`🔧 RECONCILING: Order ${order.order_id} has captured payment ${capturedPayment.id} on Razorpay but is ${order.payment_status} in DB`)
 
-                    // 3. Auto-fix: Update order to paid
                     const { error: updateError } = await adminClient
                         .from('orders')
                         .update({
                             payment_status: 'paid',
                             order_status: 'processing',
+                            razorpay_payment_id: capturedPayment.id,
                             payment_transaction_id: capturedPayment.id,
-                            total_amount: capturedPayment.amount / 100,
+                            transaction_id: capturedPayment.id,
                             updated_at: new Date().toISOString(),
+                            order_note: 'RECONCILED: Payment auto-recovered by reconciliation job'
                         })
                         .eq('order_id', order.order_id)
 
                     if (updateError) {
                         console.error(`❌ Failed to reconcile ${order.order_id}:`, updateError.message)
-                        results.push({
-                            order_id: order.order_id,
-                            status: 'error',
-                            reason: updateError.message,
-                        })
+                        results.push({ order_id: order.order_id, status: 'error', reason: updateError.message })
                     } else {
                         fixedCount++
-                        console.log(`✅ FIXED: ${order.order_id} → paid (payment: ${capturedPayment.id})`)
-
-                        // 4. Log reconciliation event
-                        await adminClient.from('order_events').insert({
-                            order_id: order.order_id,
-                            event_type: 'payment_reconciled',
-                            description: `Payment auto-reconciled: Razorpay shows captured payment ${capturedPayment.id} (₹${capturedPayment.amount / 100})`,
-                            metadata: {
-                                payment_id: capturedPayment.id,
-                                amount: capturedPayment.amount / 100,
-                                method: capturedPayment.method,
-                                razorpay_order_id: order.razorpay_order_id,
-                                previous_status: order.payment_status,
-                            },
-                            created_by: 'reconciliation',
-                        })
-
-                        // 5. Trigger order confirmation email (if not already sent)
-                        try {
-                            await adminClient.functions.invoke('order-notification', {
-                                body: {
-                                    type: 'order_received',
-                                    order_id: order.order_id,
-                                }
-                            })
-                            console.log(`📧 Triggered confirmation email for ${order.order_id}`)
-                        } catch (emailErr) {
-                            console.warn(`⚠️ Email trigger failed for ${order.order_id} (non-critical)`)
-                        }
-
+                        console.log(`✅ FIXED: ${order.order_id} → paid (payment: ${capturedPayment.id}, ₹${capturedPayment.amount / 100})`)
                         results.push({
                             order_id: order.order_id,
                             status: 'fixed',
@@ -161,7 +127,6 @@ serve(async (req) => {
                         })
                     }
                 } else {
-                    // No captured payment — order is genuinely failed/abandoned
                     results.push({
                         order_id: order.order_id,
                         status: 'confirmed_failed',
@@ -170,17 +135,14 @@ serve(async (req) => {
                 }
             } catch (orderError: any) {
                 console.error(`❌ Error processing ${order.order_id}:`, orderError.message)
-                results.push({
-                    order_id: order.order_id,
-                    status: 'error',
-                    reason: orderError.message,
-                })
+                results.push({ order_id: order.order_id, status: 'error', reason: orderError.message })
             }
         }
 
         const summary = {
             success: true,
             timestamp: new Date().toISOString(),
+            lookback_hours: lookbackHours,
             checked: suspectOrders.length,
             fixed: fixedCount,
             results,
