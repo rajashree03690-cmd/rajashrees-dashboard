@@ -7,12 +7,15 @@ const corsHeaders = {
 }
 
 /**
- * Payment Reconciliation Edge Function
+ * Payment Reconciliation Edge Function (v4)
  * 
  * Safety net that runs every 10 min (via pg_cron) to catch
  * any payments captured on Razorpay but not reflected in the database.
  * 
- * Accepts optional body: { lookback_hours: number } (default: 96)
+ * TWO-PASS RECONCILIATION:
+ *   Pass 1: Check by razorpay_order_id stored in DB
+ *   Pass 2: For orders still unfixed, search Razorpay orders by receipt (WB order ID)
+ *           This catches RETRIED payments where Razorpay created a new order.
  */
 serve(async (req) => {
     if (req.method === 'OPTIONS') {
@@ -66,50 +69,95 @@ serve(async (req) => {
             })
         }
 
-        console.log(`🔍 Found ${suspectOrders.length} suspect orders to check against Razorpay (lookback: ${lookbackHours}h)`)
+        console.log(`🔍 Found ${suspectOrders.length} suspect orders to check (lookback: ${lookbackHours}h)`)
 
         const results: any[] = []
         let fixedCount = 0
 
         for (const order of suspectOrders) {
             try {
+                // ===== PASS 1: Check by razorpay_order_id stored in DB =====
+                let capturedPayment: any = null
+                let matchedRzpOrderId = order.razorpay_order_id
+
                 const rzpResponse = await fetch(
                     `https://api.razorpay.com/v1/orders/${order.razorpay_order_id}/payments`,
                     {
-                        headers: {
-                            'Authorization': `Basic ${rzpAuth}`,
-                        },
+                        headers: { 'Authorization': `Basic ${rzpAuth}` },
                     }
                 )
 
-                if (!rzpResponse.ok) {
-                    console.warn(`⚠️ Razorpay API error for ${order.order_id}: ${rzpResponse.status}`)
-                    results.push({
-                        order_id: order.order_id,
-                        status: 'skipped',
-                        reason: `Razorpay API returned ${rzpResponse.status}`,
-                    })
-                    continue
+                if (rzpResponse.ok) {
+                    const rzpData = await rzpResponse.json()
+                    const payments = rzpData.items || []
+                    capturedPayment = payments.find((p: any) => p.status === 'captured')
                 }
 
-                const rzpData = await rzpResponse.json()
-                const payments = rzpData.items || []
+                // ===== PASS 2: If no captured payment found, search by receipt =====
+                // This catches RETRIED payments where Razorpay created a new order
+                if (!capturedPayment) {
+                    console.log(`🔄 Pass 1 miss for ${order.order_id}. Trying receipt search...`)
+                    
+                    try {
+                        // Search Razorpay orders by receipt (WB order ID)
+                        const ordersSearchResponse = await fetch(
+                            `https://api.razorpay.com/v1/orders?receipt=${order.order_id}&count=10`,
+                            {
+                                headers: { 'Authorization': `Basic ${rzpAuth}` },
+                            }
+                        )
 
-                const capturedPayment = payments.find((p: any) => p.status === 'captured')
+                        if (ordersSearchResponse.ok) {
+                            const ordersData = await ordersSearchResponse.json()
+                            const rzpOrders = ordersData.items || []
+                            
+                            // Check each Razorpay order with matching receipt for a captured payment
+                            for (const rzpOrder of rzpOrders) {
+                                if (rzpOrder.id === order.razorpay_order_id) continue; // Already checked
+                                
+                                const retryResponse = await fetch(
+                                    `https://api.razorpay.com/v1/orders/${rzpOrder.id}/payments`,
+                                    {
+                                        headers: { 'Authorization': `Basic ${rzpAuth}` },
+                                    }
+                                )
 
+                                if (retryResponse.ok) {
+                                    const retryData = await retryResponse.json()
+                                    const retryPayments = retryData.items || []
+                                    const found = retryPayments.find((p: any) => p.status === 'captured')
+                                    
+                                    if (found) {
+                                        capturedPayment = found
+                                        matchedRzpOrderId = rzpOrder.id
+                                        console.log(`🎯 FOUND on retry order! ${order.order_id}: payment ${found.id} on RZP order ${rzpOrder.id}`)
+                                        break
+                                    }
+                                }
+                            }
+                        }
+                    } catch (searchError: any) {
+                        console.warn(`⚠️ Receipt search failed for ${order.order_id}:`, searchError.message)
+                    }
+                }
+
+                // ===== UPDATE DB if captured payment found =====
                 if (capturedPayment) {
-                    console.log(`🔧 RECONCILING: Order ${order.order_id} has captured payment ${capturedPayment.id} on Razorpay but is ${order.payment_status} in DB`)
+                    console.log(`🔧 RECONCILING: ${order.order_id} -> payment ${capturedPayment.id} (RZP order: ${matchedRzpOrderId})`)
 
                     const { error: updateError } = await adminClient
                         .from('orders')
                         .update({
                             payment_status: 'paid',
                             order_status: 'processing',
+                            razorpay_order_id: matchedRzpOrderId,
                             razorpay_payment_id: capturedPayment.id,
                             payment_transaction_id: capturedPayment.id,
                             transaction_id: capturedPayment.id,
                             updated_at: new Date().toISOString(),
-                            order_note: 'RECONCILED: Payment auto-recovered by reconciliation job'
+                            order_note: matchedRzpOrderId !== order.razorpay_order_id
+                                ? 'RECONCILED: Payment recovered from retry Razorpay order'
+                                : 'RECONCILED: Payment auto-recovered by reconciliation job'
                         })
                         .eq('order_id', order.order_id)
 
@@ -118,11 +166,13 @@ serve(async (req) => {
                         results.push({ order_id: order.order_id, status: 'error', reason: updateError.message })
                     } else {
                         fixedCount++
-                        console.log(`✅ FIXED: ${order.order_id} → paid (payment: ${capturedPayment.id}, ₹${capturedPayment.amount / 100})`)
+                        console.log(`✅ FIXED: ${order.order_id} → paid (₹${capturedPayment.amount / 100})`)
                         results.push({
                             order_id: order.order_id,
                             status: 'fixed',
                             payment_id: capturedPayment.id,
+                            rzp_order_id: matchedRzpOrderId,
+                            was_retry: matchedRzpOrderId !== order.razorpay_order_id,
                             amount: capturedPayment.amount / 100,
                         })
                     }
@@ -130,7 +180,7 @@ serve(async (req) => {
                     results.push({
                         order_id: order.order_id,
                         status: 'confirmed_failed',
-                        reason: 'No captured payment on Razorpay',
+                        reason: 'No captured payment on Razorpay (checked original + retry orders)',
                     })
                 }
             } catch (orderError: any) {
