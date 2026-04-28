@@ -141,7 +141,7 @@ export default function InvoiceViewer({ open, onClose, orderId }: InvoiceViewerP
                             <h1 className="text-2xl font-bold text-gray-900">Rajashree Fashion</h1>
                             <div className="text-gray-600 space-y-0.5 mt-2">
                                 <p className="text-sm">Chennai 600116, Tamil Nadu</p>
-                                <p className="text-sm">Phone: 7010041418 | GSTIN: 33GFWPS8459J1Z8</p>
+                                <p className="text-sm">Phone: +919677941418 | GSTIN: 33GFWPS8459J1Z8</p>
                             </div>
                         </div>
                         <div>

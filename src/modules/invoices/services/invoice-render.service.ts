@@ -133,7 +133,7 @@ export const invoiceRenderService = {
                         <h3>Rajashree Fashion</h3>
                         <p>Chennai 600116, Tamil Nadu</p>
                         <p>GSTIN: 33GFWPS8459J1Z8</p>
-                        <p>Phone: 8056167040</p>
+                        <p>Phone: +919677941418</p>
                     </div>
                 </div>
                 <hr/>

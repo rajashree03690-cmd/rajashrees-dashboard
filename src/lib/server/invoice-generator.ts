@@ -17,7 +17,7 @@ const COMPANY_DETAILS = {
     name: "Rajashree Fashion",
     address: "Chennai 600116, Tamil Nadu",
     gstin: "33GFWPS8459J1Z8",
-    phone: "7010041418"
+    phone: "+919677941418"
 };
 
 export async function generateInvoiceCore(order_id: string): Promise<{ success: boolean; invoice_url?: string; error?: string }> {
