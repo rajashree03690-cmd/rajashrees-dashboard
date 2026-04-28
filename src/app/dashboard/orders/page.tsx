@@ -861,21 +861,27 @@ export default function OrdersPage() {
                                             </td>
                                             <td className="p-3">
                                                 <div className="flex flex-col gap-1">
-                                                    <Badge
-                                                        variant={
-                                                            ['Completed', 'paid'].includes(order.order_status) ? 'default' :
-                                                                order.order_status === 'processing' ? 'secondary' :
-                                                                    ['pending_payment', 'awaiting_payment', 'pending'].includes(order.order_status) ? 'outline' :
-                                                                        'destructive'
-                                                        }
-                                                        className={
-                                                            ['Completed', 'paid'].includes(order.order_status) ? 'bg-green-600' :
-                                                                ['pending_payment', 'awaiting_payment', 'pending'].includes(order.order_status) ? 'text-yellow-600 border-yellow-500' :
-                                                                    ''
-                                                        }
-                                                    >
-                                                        {order.order_status}
-                                                    </Badge>
+                                                    {(() => {
+                                                        const os = (order.order_status || 'pending').toLowerCase();
+                                                        const config: Record<string, { bg: string; text: string; label: string }> = {
+                                                            completed:        { bg: 'bg-emerald-100', text: 'text-emerald-800', label: 'Completed' },
+                                                            paid:             { bg: 'bg-emerald-100', text: 'text-emerald-800', label: 'Paid' },
+                                                            processing:       { bg: 'bg-blue-100',    text: 'text-blue-800',    label: 'Processing' },
+                                                            shipped:          { bg: 'bg-sky-100',     text: 'text-sky-800',     label: 'Shipped' },
+                                                            delivered:        { bg: 'bg-teal-100',    text: 'text-teal-800',    label: 'Delivered' },
+                                                            pending:          { bg: 'bg-amber-100',   text: 'text-amber-800',   label: 'Pending' },
+                                                            pending_payment:  { bg: 'bg-amber-100',   text: 'text-amber-800',   label: 'Pending Payment' },
+                                                            awaiting_payment: { bg: 'bg-amber-100',   text: 'text-amber-800',   label: 'Awaiting Payment' },
+                                                            cancelled:        { bg: 'bg-red-100',     text: 'text-red-800',     label: 'Cancelled' },
+                                                            failed:           { bg: 'bg-red-100',     text: 'text-red-800',     label: 'Failed' },
+                                                        };
+                                                        const c = config[os] || { bg: 'bg-gray-100', text: 'text-gray-700', label: order.order_status };
+                                                        return (
+                                                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${c.bg} ${c.text}`}>
+                                                                {c.label}
+                                                            </span>
+                                                        );
+                                                    })()}
                                                     {order.refund_status && order.refund_status !== 'none' && (
                                                         <RefundStatusBadge
                                                             status={order.refund_status as any}
@@ -929,23 +935,26 @@ export default function OrdersPage() {
                                             <td className="p-3">
                                                 <div className="flex flex-col gap-1">
                                                     {/* Payment status badge */}
-                                                    <Badge
-                                                        variant={
-                                                            ['paid', 'PAID', 'Paid'].includes(order.payment_status)
-                                                                ? 'default'
-                                                                : order.payment_status === 'failed' || order.payment_status === 'cancelled'
-                                                                    ? 'destructive'
-                                                                    : order.payment_status === 'refunded' || order.payment_status === 'partially_refunded'
-                                                                        ? 'secondary'
-                                                                        : 'outline'
-                                                        }
-                                                        className={[
-                                                            ['paid', 'PAID', 'Paid'].includes(order.payment_status) ? 'bg-green-600' : '',
-                                                            order.payment_status === 'refunded' ? 'bg-orange-500 text-white' : ''
-                                                        ].join(' ')}
-                                                    >
-                                                        {order.payment_status || 'pending'}
-                                                    </Badge>
+                                                    {(() => {
+                                                        const ps = (order.payment_status || 'pending').toLowerCase();
+                                                        const config: Record<string, { bg: string; text: string; label: string; icon: string }> = {
+                                                            paid:                { bg: 'bg-emerald-100', text: 'text-emerald-800', label: 'Paid', icon: '✓' },
+                                                            failed:              { bg: 'bg-red-100',     text: 'text-red-800',     label: 'Failed', icon: '✕' },
+                                                            cancelled:           { bg: 'bg-slate-100',   text: 'text-slate-600',   label: 'Cancelled', icon: '—' },
+                                                            refunded:            { bg: 'bg-orange-100',  text: 'text-orange-800',  label: 'Refunded', icon: '↩' },
+                                                            partially_refunded:  { bg: 'bg-purple-100',  text: 'text-purple-800',  label: 'Partial Refund', icon: '↩' },
+                                                            pending:             { bg: 'bg-amber-100',   text: 'text-amber-800',   label: 'Pending', icon: '⏳' },
+                                                            awaiting_payment:    { bg: 'bg-amber-100',   text: 'text-amber-800',   label: 'Awaiting', icon: '⏳' },
+                                                            pending_payment:     { bg: 'bg-amber-100',   text: 'text-amber-800',   label: 'Pending', icon: '⏳' },
+                                                        };
+                                                        const c = config[ps] || { bg: 'bg-gray-100', text: 'text-gray-700', label: order.payment_status || 'pending', icon: '?' };
+                                                        return (
+                                                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${c.bg} ${c.text}`}>
+                                                                <span className="text-[10px]">{c.icon}</span>
+                                                                {c.label}
+                                                            </span>
+                                                        );
+                                                    })()}
                                                     {/* Payment ID display */}
                                                     {(order.payment_transaction_id || order.transaction_id) && (
                                                         <div className="text-xs flex items-center gap-1 mt-1">
