@@ -53,6 +53,32 @@ serve(async (req) => {
         }
         console.log(`[AUTH] OTP stored successfully for ${email}`)
 
+        // ── Dev bypass: skip Resend for test emails ──
+        // This allows testing the auth flow when Resend quota is exhausted.
+        // Test accounts use a fixed OTP '123456' instead of the random one.
+        const DEV_BYPASS_EMAILS = ['test@rajashreefashion.com', 'dev@rajashreefashion.com', 'demo@rajashreefashion.com']
+        if (DEV_BYPASS_EMAILS.includes(email.toLowerCase())) {
+            // Overwrite with known OTP for dev testing
+            await supabase
+                .from('password_reset_otps')
+                .update({ otp: '123456' })
+                .eq('email', email.toLowerCase())
+                .eq('used', false)
+                .order('created_at', { ascending: false })
+                .limit(1)
+
+            console.log(`[AUTH] Dev bypass: OTP set to 123456 for ${email}`)
+            return new Response(
+                JSON.stringify({
+                    success: true,
+                    message: 'Verification code sent to your email',
+                    email: email,
+                    _dev_note: 'Bypass active — use OTP: 123456'
+                }),
+                { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            )
+        }
+
         // Send OTP via Resend
         const resendApiKey = Deno.env.get('RESEND_API_KEY')
         if (!resendApiKey) {
