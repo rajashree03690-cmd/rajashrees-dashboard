@@ -248,7 +248,7 @@ export function AddVendorDialog({ open, onOpenChange, onSuccess, initialVendor, 
                                     id="contact-person"
                                     value={contactPerson}
                                     onChange={(e) => setContactPerson(e.target.value)}
-                                    placeholder="John Doe"
+                                    placeholder="Contact person name"
                                 />
                             </div>
 

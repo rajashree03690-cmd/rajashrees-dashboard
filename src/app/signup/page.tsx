@@ -90,7 +90,7 @@ export default function SignupPage() {
                             <Input
                                 id="full_name"
                                 name="full_name"
-                                placeholder="John Doe"
+                                placeholder="Enter your full name"
                                 required
                                 disabled={loading}
                             />

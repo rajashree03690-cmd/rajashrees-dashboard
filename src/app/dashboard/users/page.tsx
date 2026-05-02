@@ -432,7 +432,7 @@ export default function UsersPage() {
                                     id="full_name"
                                     value={formData.full_name}
                                     onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                                    placeholder="John Doe"
+                                    placeholder="Enter full name"
                                 />
                             </div>
                             <div>
