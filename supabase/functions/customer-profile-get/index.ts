@@ -60,6 +60,8 @@ serve(async (req) => {
 
         const userId = user.id
 
+        const clientSource = req.headers.get('x-client-source') || 'web';
+
         // Fetch customer profile with related data
         const { data: customer, error: customerError } = await supabaseClient
             .from('customers')
@@ -122,7 +124,7 @@ serve(async (req) => {
                             email: user.email,
                             full_name: user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || 'Customer',
                             mobile_number: user.user_metadata?.mobile_number || 'TEMP_' + Date.now(),
-                            source: 'web',
+                            source: clientSource,
                             created_at: new Date().toISOString(),
                             updated_at: new Date().toISOString()
                         })

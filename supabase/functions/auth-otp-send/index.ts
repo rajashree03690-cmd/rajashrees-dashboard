@@ -91,7 +91,9 @@ serve(async (req) => {
 
         const emailSubject = purpose === 'registration'
             ? 'Verify Your Email - Rajashree Fashion'
-            : 'Password Reset Code - Rajashree Fashion'
+            : purpose === 'login'
+                ? 'Login Verification Code - Rajashree Fashion'
+                : 'Password Reset Code - Rajashree Fashion'
 
         const emailHtml = `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -102,12 +104,14 @@ serve(async (req) => {
                 
                 <div style="background: linear-gradient(135deg, #fff1f2, #ffffff); border-radius: 16px; padding: 30px; border: 1px solid #fecdd3;">
                     <h2 style="color: #1f2937; margin-top: 0;">
-                        ${purpose === 'registration' ? 'Welcome! Verify Your Email' : 'Reset Your Password'}
+                        ${purpose === 'registration' ? 'Welcome! Verify Your Email' : purpose === 'login' ? 'Login Verification Code' : 'Reset Your Password'}
                     </h2>
                     <p style="color: #6b7280; font-size: 16px;">
                         ${purpose === 'registration'
                 ? 'Thank you for signing up with Rajashree Fashion. Use the code below to verify your email:'
-                : 'Use the code below to reset your password:'}
+                : purpose === 'login'
+                    ? 'Use the code below to securely log into your account:'
+                    : 'Use the code below to reset your password:'}
                     </p>
                     
                     <div style="background: #ffffff; border: 2px dashed #e11d48; border-radius: 12px; padding: 20px; text-align: center; margin: 25px 0;">

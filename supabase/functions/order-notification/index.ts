@@ -169,7 +169,7 @@ function baseTemplate(title: string, content: string, footerNote?: string) {
 }
 
 function formatCurrency(amount: number) {
-    return `₹${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    return `&#x20B9;${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
 function itemsTableHtml(items: any[]) {
@@ -308,7 +308,7 @@ function orderDispatchedEmail(order: any, items: any[], trackingId?: string, car
     <div class="tracking-box">
       <p style="margin:0 0 8px;font-size:11px;color:#8b7a2e;letter-spacing:3px;text-transform:uppercase;font-family:Arial,sans-serif;">Tracking ID</p>
       <div class="tracking-id">${trackingId}</div>
-      ${trackingLink ? `<p style="margin:16px 0 0"><a href="${trackingLink}" class="btn btn-cherry" target="_blank">ðŸ” Track Your Shipment</a></p>` : ''}
+      ${trackingLink ? `<p style="margin:16px 0 0"><a href="${trackingLink}" class="btn btn-cherry" target="_blank">Track Your Shipment</a></p>` : ''}
     </div>
     ` : ''}
 
@@ -322,7 +322,7 @@ function orderDispatchedEmail(order: any, items: any[], trackingId?: string, car
     </div>
     
     <div style="background:linear-gradient(135deg,#fce4ec,#fff0f3);border:1px solid #f8bbd0;border-radius:12px;padding:18px;text-align:center;margin-top:20px;">
-      <p style="margin:0;color:#af2b3e;font-weight:600;">ðŸŽ Estimated delivery: <strong>3-5 business days</strong> from dispatch date.</p>
+      <p style="margin:0;color:#af2b3e;font-weight:600;">Estimated delivery: <strong>3-5 business days</strong> from dispatch date.</p>
     </div>
     `
     return {
@@ -364,7 +364,7 @@ function orderDeliveredEmail(order: any, items: any[]) {
 
 function refundInitiatedEmail(order: any, refundAmount: number, refundId?: string) {
     const content = `
-    <p class="title">Refund Initiated 💰</p>
+    <p class="title">Refund Initiated -</p>
     <span class="status-badge badge-orange">Refund Processing</span>
     <div class="divider"></div>
     
@@ -379,7 +379,7 @@ function refundInitiatedEmail(order: any, refundAmount: number, refundId?: strin
     </div>
     
     <div style="background:linear-gradient(135deg,#fff8e1,#faf7f0);border:2px solid #d4af37;border-radius:12px;padding:20px;margin:24px 0;">
-      <p style="margin:0;font-weight:700;color:#735c00;font-size:16px;">â±ï¸ Refund Timeline</p>
+      <p style="margin:0;font-weight:700;color:#735c00;font-size:16px;">Refund Timeline</p>
       <div style="background:#fff;border-radius:8px;padding:16px;margin-top:12px;border:1px solid #f0ead6;">
         <table style="width:100%;font-size:14px;">
           <tr>
@@ -405,7 +405,7 @@ function refundInitiatedEmail(order: any, refundAmount: number, refundId?: strin
     </div>
     `
     return {
-        subject: `Refund Initiated 💰 Order #${order.order_id} | Rajashree Fashion`,
+        subject: `Refund Initiated - Order #${order.order_id} | Rajashree Fashion`,
         html: baseTemplate('Refund Initiated', content)
     }
 }

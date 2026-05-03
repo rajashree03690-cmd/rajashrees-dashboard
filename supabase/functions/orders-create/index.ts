@@ -210,8 +210,8 @@ serve(async (req) => {
                 return 100
             }
 
-            // Rest of India: ₹130
-            return 130
+            // Rest of India: ₹150
+            return 150
         }
 
         const shipping_fee = calculateShipping(delivery_address.state)
