@@ -23,8 +23,7 @@ export async function GET(req: Request) {
         // QUERY 1: Fetch products from master_product
         let dataQuery = supabase
             .from('master_product')
-            .select('product_id, name, description, image_url, sku, rating, review_count, subcategory_id')
-            .eq('is_Active', true);
+            .select('product_id, name, description, image_url, sku, rating, review_count, subcategory_id, is_Active');
 
         if (search) {
             dataQuery = dataQuery.or(`name.ilike.%${search}%,sku.ilike.%${search}%`);
@@ -50,7 +49,6 @@ export async function GET(req: Request) {
             .from('product_variants')
             .select('product_id, variant_id, variant_name, sku, saleprice, regularprice, stock, image_url, is_Active, is_trending')
             .in('product_id', productIds)
-            .eq('is_Active', true)
             .limit(500);
 
         // Build variant lookup map
@@ -72,7 +70,9 @@ export async function GET(req: Request) {
             const reg = activeVariant?.regularprice || sale || 0;
             const has_pricing = !!(sale || reg);
 
-            if (!has_pricing) continue;
+            // Do not skip products without pricing in the admin dashboard,
+            // as admins need to see them to fix them.
+            // if (!has_pricing) continue;
 
             finalData.push({
                 id: product.product_id,
@@ -91,8 +91,8 @@ export async function GET(req: Request) {
                 variant_id: activeVariant?.variant_id,
                 subcategory_id: product.subcategory_id,
                 has_pricing,
-                isActive: true,
-                is_Active: true,
+                isActive: product.is_Active ?? true,
+                is_Active: product.is_Active ?? true,
                 variants: (() => {
                     const uMap = new Map();
                     for (const v of pVariants) {
@@ -120,8 +120,7 @@ export async function GET(req: Request) {
                 // Count exactly for filtered results (Fresh query to avoid mutated limits)
                 let countQuery = supabase
                     .from('master_product')
-                    .select('product_id', { count: 'exact', head: true })
-                    .eq('is_Active', true);
+                    .select('product_id', { count: 'exact', head: true });
 
                 if (search) {
                     countQuery = countQuery.or(`name.ilike.%${search}%,sku.ilike.%${search}%`);
@@ -134,8 +133,7 @@ export async function GET(req: Request) {
                 try {
                     const { count } = await supabase
                         .from('master_product')
-                        .select('product_id', { count: 'exact', head: true })
-                        .eq('is_Active', true);
+                        .select('product_id', { count: 'exact', head: true });
                     estimatedTotal = count || estimatedTotal;
                 } catch (e) { console.error('Count query failed:', e); }
             }

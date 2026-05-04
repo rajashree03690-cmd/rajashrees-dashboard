@@ -66,7 +66,7 @@ serve(async (req) => {
             .select('cart_id')
             .eq('customer_id', customer.customer_id)
             .eq('status', 'active')
-            .single()
+            .maybeSingle()
 
         if (!cart) {
             return new Response(

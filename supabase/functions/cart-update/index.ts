@@ -34,7 +34,7 @@ serve(async (req) => {
         cart!inner(customer_id)
       `)
             .eq('cart_item_id', cart_item_id)
-            .single()
+            .maybeSingle()
 
         console.log("🔍 Check item result:", { item, checkError })
 
