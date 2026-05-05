@@ -93,18 +93,30 @@ serve(async (req) => {
             // If variant_id is missing, Supabase might try to insert with null ID (which fails if PK).
             // We need to remove 'variant_id' key if it is null/undefined so PG generates it.
 
-            const cleanVariants = variants.map((v: any) => {
-                const { variant_id, ...rest } = v;
-                return variant_id ? v : rest; // Keep ID if exists, remove if not
-            });
+            // Separate variants into inserts (no variant_id) and updates (has variant_id)
+            const insertVariants = variants.filter((v: any) => !v.variant_id);
+            const updateVariants = variants.filter((v: any) => v.variant_id);
 
-            const { error: variantError } = await supabase
-                .from("product_variants")
-                .upsert(cleanVariants, { onConflict: 'variant_id' });
+            if (insertVariants.length > 0) {
+                const { error: insertError } = await supabase
+                    .from("product_variants")
+                    .insert(insertVariants);
 
-            if (variantError) {
-                console.error("❌ Variant upsert failed:", variantError);
-                throw variantError;
+                if (insertError) {
+                    console.error("❌ Variant insert failed:", insertError);
+                    throw insertError;
+                }
+            }
+
+            if (updateVariants.length > 0) {
+                const { error: updateError } = await supabase
+                    .from("product_variants")
+                    .upsert(updateVariants, { onConflict: 'variant_id' });
+
+                if (updateError) {
+                    console.error("❌ Variant update failed:", updateError);
+                    throw updateError;
+                }
             }
 
             // Optional: Delete variants that are NOT in the body.variants list?

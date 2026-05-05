@@ -23,7 +23,7 @@ export async function GET(req: Request) {
         // QUERY 1: Fetch products from master_product
         let dataQuery = supabase
             .from('master_product')
-            .select('product_id, name, description, image_url, sku, rating, review_count, subcategory_id, is_Active');
+            .select('product_id, name, description, image_url, sku, rating, review_count, subcategory_id, is_Active, subcategories(name)');
 
         if (search) {
             dataQuery = dataQuery.or(`name.ilike.%${search}%,sku.ilike.%${search}%`);
@@ -90,6 +90,7 @@ export async function GET(req: Request) {
                 sku: activeVariant?.sku || product.sku,
                 variant_id: activeVariant?.variant_id,
                 subcategory_id: product.subcategory_id,
+                subcategoryName: product.subcategories?.name || '-',
                 has_pricing,
                 isActive: product.is_Active ?? true,
                 is_Active: product.is_Active ?? true,
