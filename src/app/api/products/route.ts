@@ -47,7 +47,7 @@ export async function GET(req: Request) {
 
         const { data: variants } = await supabase
             .from('product_variants')
-            .select('product_id, variant_id, variant_name, sku, saleprice, regularprice, stock, image_url, is_Active, is_trending')
+            .select('product_id, variant_id, variant_name, sku, saleprice, regularprice, stock, image_url, is_Active, is_trending, size, color')
             .in('product_id', productIds)
             .limit(500);
 
@@ -107,6 +107,7 @@ export async function GET(req: Request) {
                         sku: v.sku, saleprice: v.saleprice || v.regularprice || 0, salePrice: v.saleprice || v.regularprice || 0,
                         regularprice: v.regularprice || v.saleprice || 0, regularPrice: v.regularprice || v.saleprice || 0,
                         stock: v.stock || 0, stock_quantity: v.stock || 0, image_url: v.image_url,
+                        size: v.size || '', color: v.color || '',
                         isActive: v.is_Active, is_Active: v.is_Active, is_trending: v.is_trending
                     }));
                 })()

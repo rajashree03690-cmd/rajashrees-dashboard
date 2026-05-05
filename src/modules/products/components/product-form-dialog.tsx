@@ -357,6 +357,7 @@ export function ProductFormDialog({ open, onOpenChange, onSuccess, initialProduc
                 stock: parseInt(stock) || 0,
                 weight: parseFloat(weight) || 0,
                 color: '',
+                size: '',
                 is_Active: true,
                 image_url: finalImageUrl,
                 // Note: Variants typically share the product's main image or have their own
@@ -662,6 +663,7 @@ export function ProductFormDialog({ open, onOpenChange, onSuccess, initialProduc
                                             stock: 0,
                                             weight: 0,
                                             color: '',
+                                            size: '',
                                             is_Active: true
                                         }]);
                                     }}
@@ -783,6 +785,18 @@ export function ProductFormDialog({ open, onOpenChange, onSuccess, initialProduc
                                                     className="h-8 text-sm"
                                                 />
                                             </div>
+                                            <div>
+                                                <Label className="text-xs text-gray-500">Size</Label>
+                                                <Input
+                                                    value={variant.size || ''}
+                                                    onChange={(e) => {
+                                                        const newVariants = [...variants];
+                                                        newVariants[index] = { ...newVariants[index], size: e.target.value };
+                                                        setVariants(newVariants);
+                                                    }}
+                                                    className="h-8 text-sm"
+                                                />
+                                            </div>
                                         </div>
                                     </div>
                                 ))
@@ -798,6 +812,7 @@ export function ProductFormDialog({ open, onOpenChange, onSuccess, initialProduc
                                             stock: 0,
                                             weight: 0,
                                             color: '',
+                                            size: '',
                                             is_Active: true
                                         }]);
                                     }}>Create First Variant</Button>
