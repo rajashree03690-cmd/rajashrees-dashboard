@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRoles, useRoleWithPermissions, usePermissionsByCategory, useUpdateRolePermissions } from '@/modules/settings/hooks/use-permissions';
 import { usePermission } from '@/hooks/use-permission';
 import { Save, Shield } from 'lucide-react';
@@ -20,12 +20,12 @@ export default function PermissionsPage() {
     const { data: selectedRole } = useRoleWithPermissions(selectedRoleId);
     const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
 
-    // Update selected permissions when role changes
-    useState(() => {
+    // Update selected permissions when role data loads
+    useEffect(() => {
         if (selectedRole) {
-            setSelectedPermissions(selectedRole.permissions.map(p => p.id));
+            setSelectedPermissions(selectedRole.permissions.map(p => p.permission_id));
         }
-    });
+    }, [selectedRole]);
 
     const handleRoleSelect = (roleId: string) => {
         setSelectedRoleId(roleId);
@@ -54,7 +54,7 @@ export default function PermissionsPage() {
             <div className="mb-6">
                 <h2 className="text-2xl font-bold text-gray-900">Roles & Permissions</h2>
                 <p className="mt-1 text-sm text-gray-600">
-                    Configure page-level access control for each role
+                    Configure menu-level and action-level access control for each role
                 </p>
             </div>
 
@@ -65,11 +65,11 @@ export default function PermissionsPage() {
                     <div className="space-y-2">
                         {roles.map((role) => (
                             <button
-                                key={role.id}
-                                onClick={() => handleRoleSelect(role.id)}
+                                key={role.role_id}
+                                onClick={() => handleRoleSelect(String(role.role_id))}
                                 className={`
                   w-full text-left px-3 py-2 rounded-md text-sm font-medium transition
-                  ${selectedRoleId === role.id
+                  ${selectedRoleId === String(role.role_id)
                                         ? 'bg-purple-50 text-purple-700'
                                         : 'text-gray-700 hover:bg-gray-50'
                                     }
@@ -77,9 +77,9 @@ export default function PermissionsPage() {
                             >
                                 <div className="flex items-center gap-2">
                                     <Shield className="w-4 h-4" />
-                                    {role.name}
+                                    {role.role_name}
                                 </div>
-                                {role.is_system && (
+                                {role.is_system_role && (
                                     <span className="text-xs text-gray-500">System Role</span>
                                 )}
                             </button>
@@ -93,9 +93,9 @@ export default function PermissionsPage() {
                         <>
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="text-sm font-semibold text-gray-900">
-                                    Permissions for {selectedRole.name}
+                                    Permissions for {selectedRole.role_name}
                                 </h3>
-                                {canEdit && !selectedRole.is_system && (
+                                {canEdit && !selectedRole.is_system_role && (
                                     <button
                                         onClick={handleSave}
                                         disabled={updatePermissions.isPending}
@@ -107,7 +107,7 @@ export default function PermissionsPage() {
                                 )}
                             </div>
 
-                            {selectedRole.is_system && (
+                            {selectedRole.is_system_role && (
                                 <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
                                     <p className="text-sm text-yellow-800">
                                         System roles cannot be modified. Create a custom role to change permissions.
@@ -122,13 +122,13 @@ export default function PermissionsPage() {
                                             {category}
                                         </h4>
                                         <div className="space-y-2">
-                                            {permissions.map((permission) => {
-                                                const isSelected = selectedPermissions.includes(permission.id);
-                                                const isDisabled = !canEdit || selectedRole.is_system;
+                                            {(permissions as any[]).map((permission) => {
+                                                const isSelected = selectedPermissions.includes(String(permission.permission_id));
+                                                const isDisabled = !canEdit || selectedRole.is_system_role;
 
                                                 return (
                                                     <label
-                                                        key={permission.id}
+                                                        key={permission.permission_id}
                                                         className={`
                               flex items-center gap-3 p-3 rounded-md border transition cursor-pointer
                               ${isSelected
@@ -141,13 +141,13 @@ export default function PermissionsPage() {
                                                         <input
                                                             type="checkbox"
                                                             checked={isSelected}
-                                                            onChange={() => handlePermissionToggle(permission.id)}
+                                                            onChange={() => handlePermissionToggle(String(permission.permission_id))}
                                                             disabled={isDisabled}
                                                             className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
                                                         />
                                                         <div className="flex-1">
                                                             <div className="text-sm font-medium text-gray-900">
-                                                                {permission.name}
+                                                                {permission.permission_name}
                                                             </div>
                                                             {permission.description && (
                                                                 <div className="text-xs text-gray-500">

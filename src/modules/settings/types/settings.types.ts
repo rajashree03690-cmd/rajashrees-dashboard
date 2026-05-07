@@ -106,9 +106,8 @@ export interface AdminUser {
     id: string;
     email: string;
     full_name: string | null;
-    role_id: string | null;
-    role?: Role;
-    is_Active: boolean;
+    role: string | null;
+    is_active: boolean;
     created_at: string;
     updated_at: string;
 }
@@ -181,8 +180,8 @@ export interface CreateAdminUserData {
 export interface UpdateAdminUserData {
     email?: string;
     full_name?: string;
-    role_id?: string;
-    is_Active?: boolean;
+    role?: string;
+    is_active?: boolean;
 }
 
 // =====================================================

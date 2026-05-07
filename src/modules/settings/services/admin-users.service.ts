@@ -19,10 +19,7 @@ const supabase = createClient();
 export async function getAdminUsers(): Promise<AdminUser[]> {
     const { data, error } = await supabase
         .from('dashboard_users')
-        .select(`
-      *,
-      role:roles(*)
-    `)
+        .select('*')
         .order('created_at', { ascending: false });
 
     if (error) {
@@ -36,10 +33,7 @@ export async function getAdminUsers(): Promise<AdminUser[]> {
 export async function getAdminUser(id: string): Promise<AdminUser | null> {
     const { data, error } = await supabase
         .from('dashboard_users')
-        .select(`
-      *,
-      role:roles(*)
-    `)
+        .select('*')
         .eq('id', id)
         .single();
 
@@ -69,6 +63,21 @@ export async function createAdminUser(userData: CreateAdminUserData): Promise<Ad
             return null;
         }
 
+        // Map role_id to role_name for storing in dashboard_users
+        // dashboard_users.role is a text column (e.g. "admin", "Manager")
+        let roleName = userData.role_id; // fallback to raw value
+
+        // Try to resolve role_id to role_name
+        const { data: roleData } = await supabase
+            .from('roles')
+            .select('role_name')
+            .eq('role_id', userData.role_id)
+            .single();
+
+        if (roleData) {
+            roleName = roleData.role_name;
+        }
+
         // Create dashboard user record
         const { data: user, error: userError } = await supabase
             .from('dashboard_users')
@@ -76,13 +85,10 @@ export async function createAdminUser(userData: CreateAdminUserData): Promise<Ad
                 id: authData.user.id,
                 email: userData.email,
                 full_name: userData.full_name,
-                role_id: userData.role_id,
-                is_Active: true,
+                role: roleName,
+                is_active: true,
             })
-            .select(`
-        *,
-        role:roles(*)
-      `)
+            .select('*')
             .single();
 
         if (userError) {
@@ -102,10 +108,7 @@ export async function updateAdminUser(id: string, updates: UpdateAdminUserData):
         .from('dashboard_users')
         .update(updates)
         .eq('id', id)
-        .select(`
-      *,
-      role:roles(*)
-    `)
+        .select('*')
         .single();
 
     if (error) {
@@ -117,10 +120,10 @@ export async function updateAdminUser(id: string, updates: UpdateAdminUserData):
 }
 
 export async function deleteAdminUser(id: string): Promise<boolean> {
-    // Soft delete - set is_Active to false
+    // Soft delete - set is_active to false
     const { error } = await supabase
         .from('dashboard_users')
-        .update({ is_Active: false })
+        .update({ is_active: false })
         .eq('id', id);
 
     if (error) {
@@ -134,7 +137,7 @@ export async function deleteAdminUser(id: string): Promise<boolean> {
 export async function toggleAdminUserStatus(id: string, isActive: boolean): Promise<boolean> {
     const { error } = await supabase
         .from('dashboard_users')
-        .update({ is_Active: isActive })
+        .update({ is_active: isActive })
         .eq('id', id);
 
     if (error) {

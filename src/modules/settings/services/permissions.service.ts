@@ -260,7 +260,8 @@ export async function getAllPermissions(): Promise<Permission[]> {
     const { data, error } = await supabase
         .from('permissions')
         .select('*')
-        .order('category, name');
+        .order('module')
+        .order('permission_name');
 
     if (error) {
         console.error('Error fetching permissions:', error);
@@ -276,7 +277,7 @@ export async function getPermissionsByCategory(): Promise<Record<string, Permiss
     const grouped: Record<string, Permission[]> = {};
 
     permissions.forEach(perm => {
-        const category = perm.category || 'Other';
+        const category = perm.module || 'Other';
         if (!grouped[category]) {
             grouped[category] = [];
         }

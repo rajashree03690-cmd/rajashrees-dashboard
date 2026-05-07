@@ -101,11 +101,11 @@ export default function AdminUsersPage() {
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
                                     <span className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded">
-                                        {user.role?.name || 'No Role'}
+                                        {user.role || 'No Role'}
                                     </span>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
-                                    {user.is_Active ? (
+                                    {user.is_active ? (
                                         <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded flex items-center gap-1 w-fit">
                                             <UserCheck className="w-3 h-3" />
                                             Active
@@ -123,10 +123,10 @@ export default function AdminUsersPage() {
                                 {canEdit && (
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
                                         <button
-                                            onClick={() => handleToggleStatus(user.id, user.is_Active)}
+                                            onClick={() => handleToggleStatus(user.id, user.is_active)}
                                             className="text-purple-600 hover:text-purple-900"
                                         >
-                                            {user.is_Active ? 'Deactivate' : 'Activate'}
+                                            {user.is_active ? 'Deactivate' : 'Activate'}
                                         </button>
                                     </td>
                                 )}
@@ -195,8 +195,8 @@ export default function AdminUsersPage() {
                                 >
                                     <option value="">Select Role</option>
                                     {roles.map((role) => (
-                                        <option key={role.id} value={role.id}>
-                                            {role.name}
+                                        <option key={role.role_id} value={role.role_id}>
+                                            {role.role_name}
                                         </option>
                                     ))}
                                 </select>
