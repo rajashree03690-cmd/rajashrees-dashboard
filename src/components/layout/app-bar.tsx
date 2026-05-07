@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import {
     Bell,
@@ -9,7 +9,6 @@ import {
     LogOut,
     User,
     ChevronDown,
-    Menu,
     Users,
     Shield,
 } from 'lucide-react';
@@ -24,17 +23,68 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import Link from 'next/link';
-import Image from 'next/image';
+
+interface DashboardUser {
+    user_id: number;
+    email: string;
+    full_name: string | null;
+    role: string;
+}
 
 export function AppBar() {
     const pathname = usePathname();
     const [searchQuery, setSearchQuery] = useState('');
+    const [user, setUser] = useState<DashboardUser | null>(null);
+
+    // Read actual logged-in user from localStorage
+    useEffect(() => {
+        try {
+            const storedUser = localStorage.getItem('dashboard_user');
+            if (storedUser) {
+                setUser(JSON.parse(storedUser));
+            }
+        } catch (err) {
+            console.error('Error reading user:', err);
+        }
+
+        // Listen for storage changes (in case user logs in/out in another tab)
+        const handleStorageChange = (e: StorageEvent) => {
+            if (e.key === 'dashboard_user') {
+                if (e.newValue) {
+                    setUser(JSON.parse(e.newValue));
+                } else {
+                    setUser(null);
+                }
+            }
+        };
+        window.addEventListener('storage', handleStorageChange);
+        return () => window.removeEventListener('storage', handleStorageChange);
+    }, []);
+
+    const displayName = user?.full_name || user?.email || 'User';
+    const displayEmail = user?.email || '';
+    const displayRole = user?.role || 'User';
+    const isAdmin = user?.role === 'Admin';
+
+    const getInitials = (name: string) => {
+        return name
+            .split(' ')
+            .map((n) => n[0])
+            .join('')
+            .substring(0, 2)
+            .toUpperCase();
+    };
 
     // Get page title from pathname
     const getPageTitle = () => {
         const path = pathname.split('/').pop();
         if (!path || path === 'dashboard') return 'Dashboard';
-        return path.charAt(0).toUpperCase() + path.slice(1);
+        return path.charAt(0).toUpperCase() + path.slice(1).replace(/-/g, ' ');
+    };
+
+    const handleLogout = () => {
+        localStorage.removeItem('dashboard_user');
+        window.location.href = '/login';
     };
 
     return (
@@ -70,8 +120,6 @@ export function AppBar() {
                         </Badge>
                     </button>
 
-
-
                     {/* Divider */}
                     <div className="h-8 w-px bg-gray-200"></div>
 
@@ -79,19 +127,21 @@ export function AppBar() {
                     <DropdownMenu>
                         <DropdownMenuTrigger className="flex items-center gap-3 hover:bg-gray-50 rounded-lg px-3 py-2 transition">
                             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center shadow-lg">
-                                <span className="text-sm font-semibold text-white">RF</span>
+                                <span className="text-sm font-semibold text-white">
+                                    {getInitials(displayName)}
+                                </span>
                             </div>
                             <div className="hidden lg:block text-left">
-                                <p className="text-sm font-semibold text-gray-900">Rajashree Fashion</p>
-                                <p className="text-xs text-gray-500">Administrator</p>
+                                <p className="text-sm font-semibold text-gray-900">{displayName}</p>
+                                <p className="text-xs text-gray-500 capitalize">{displayRole}</p>
                             </div>
                             <ChevronDown className="h-4 w-4 text-gray-400" />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-56">
                             <DropdownMenuLabel>
                                 <div className="flex flex-col space-y-1">
-                                    <p className="text-sm font-medium">Rajashree Fashion</p>
-                                    <p className="text-xs text-gray-500">admin@rajashreefashion.com</p>
+                                    <p className="text-sm font-medium">{displayName}</p>
+                                    <p className="text-xs text-gray-500">{displayEmail}</p>
                                 </div>
                             </DropdownMenuLabel>
                             <DropdownMenuSeparator />
@@ -99,18 +149,30 @@ export function AppBar() {
                                 <User className="mr-2 h-4 w-4" />
                                 <span>Profile</span>
                             </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                                <Link href="/dashboard/users">
-                                    <Users className="mr-2 h-4 w-4" />
-                                    <span>Users Management</span>
-                                </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                                <Link href="/dashboard/role-management">
-                                    <Shield className="mr-2 h-4 w-4" />
-                                    <span>Role Management</span>
-                                </Link>
-                            </DropdownMenuItem>
+
+                            {/* Admin-only controls */}
+                            {isAdmin && (
+                                <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuLabel className="text-xs text-gray-500">
+                                        Admin Controls
+                                    </DropdownMenuLabel>
+                                    <DropdownMenuItem asChild>
+                                        <Link href="/dashboard/users">
+                                            <Users className="mr-2 h-4 w-4" />
+                                            <span>Users Management</span>
+                                        </Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem asChild>
+                                        <Link href="/dashboard/settings/permissions">
+                                            <Shield className="mr-2 h-4 w-4" />
+                                            <span>Role Management</span>
+                                        </Link>
+                                    </DropdownMenuItem>
+                                </>
+                            )}
+
+                            <DropdownMenuSeparator />
                             <DropdownMenuItem asChild>
                                 <Link href="/dashboard/settings">
                                     <Settings className="mr-2 h-4 w-4" />
@@ -120,9 +182,7 @@ export function AppBar() {
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                                 className="text-red-600 focus:text-red-600"
-                                onClick={() => {
-                                    window.location.href = '/login';
-                                }}
+                                onClick={handleLogout}
                             >
                                 <LogOut className="mr-2 h-4 w-4" />
                                 <span>Logout</span>

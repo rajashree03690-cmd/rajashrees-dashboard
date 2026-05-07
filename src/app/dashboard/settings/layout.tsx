@@ -16,6 +16,7 @@ import {
     Users,
     Shield,
     Lock,
+    Construction,
     ChevronRight,
     Loader2
 } from 'lucide-react';
@@ -27,6 +28,7 @@ const iconMap: Record<string, any> = {
     Users,
     Shield,
     Lock,
+    Construction,
 };
 
 export default function SettingsLayout({

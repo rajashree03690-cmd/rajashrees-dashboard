@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -14,13 +14,33 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Bell, Settings, User, LogOut, Shield, UserCog } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
+interface DashboardUser {
+    user_id: number;
+    email: string;
+    full_name: string | null;
+    role: string;
+}
+
 export function DashboardHeader() {
     const router = useRouter();
-    const [user] = useState({
-        name: 'Rajashree Admin',
-        email: 'admin@rajashreefashion.com',
-        role: 'Admin',
-    });
+    const [user, setUser] = useState<DashboardUser | null>(null);
+
+    // Read actual logged-in user from localStorage
+    useEffect(() => {
+        try {
+            const storedUser = localStorage.getItem('dashboard_user');
+            if (storedUser) {
+                setUser(JSON.parse(storedUser));
+            }
+        } catch (err) {
+            console.error('Error reading user:', err);
+        }
+    }, []);
+
+    const displayName = user?.full_name || user?.email || 'User';
+    const displayEmail = user?.email || '';
+    const displayRole = user?.role || 'User';
+    const isAdmin = user?.role === 'Admin';
 
     const handleLogout = () => {
         localStorage.removeItem('dashboard_user');
@@ -32,6 +52,7 @@ export function DashboardHeader() {
             .split(' ')
             .map((n) => n[0])
             .join('')
+            .substring(0, 2)
             .toUpperCase();
     };
 
@@ -67,20 +88,20 @@ export function DashboardHeader() {
                             <Button variant="ghost" className="gap-2 pl-2 pr-3">
                                 <Avatar className="h-8 w-8">
                                     <AvatarFallback className="bg-gradient-to-br from-indigo-600 to-purple-600 text-white text-sm font-semibold">
-                                        {getInitials(user.name)}
+                                        {getInitials(displayName)}
                                     </AvatarFallback>
                                 </Avatar>
                                 <div className="flex flex-col items-start text-left">
-                                    <span className="text-sm font-medium">{user.name}</span>
-                                    <span className="text-xs text-gray-500 capitalize">{user.role}</span>
+                                    <span className="text-sm font-medium">{displayName}</span>
+                                    <span className="text-xs text-gray-500 capitalize">{displayRole}</span>
                                 </div>
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-56">
                             <DropdownMenuLabel>
                                 <div className="flex flex-col space-y-1">
-                                    <p className="text-sm font-medium">{user.name}</p>
-                                    <p className="text-xs text-gray-500">{user.email}</p>
+                                    <p className="text-sm font-medium">{displayName}</p>
+                                    <p className="text-xs text-gray-500">{displayEmail}</p>
                                     <div className="mt-2 flex items-center gap-2">
                                         <div className="h-2 w-2 rounded-full bg-green-500"></div>
                                         <span className="text-xs text-gray-600">Active</span>
@@ -92,18 +113,25 @@ export function DashboardHeader() {
                                 <User className="mr-2 h-4 w-4" />
                                 Profile
                             </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuLabel className="text-xs text-gray-500">
-                                Admin Controls
-                            </DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => router.push('/dashboard/users')}>
-                                <UserCog className="mr-2 h-4 w-4" />
-                                Users Management
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => router.push('/dashboard/role-management')}>
-                                <Shield className="mr-2 h-4 w-4" />
-                                Role Management
-                            </DropdownMenuItem>
+
+                            {/* Admin-only controls */}
+                            {isAdmin && (
+                                <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuLabel className="text-xs text-gray-500">
+                                        Admin Controls
+                                    </DropdownMenuLabel>
+                                    <DropdownMenuItem onClick={() => router.push('/dashboard/users')}>
+                                        <UserCog className="mr-2 h-4 w-4" />
+                                        Users Management
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => router.push('/dashboard/settings/permissions')}>
+                                        <Shield className="mr-2 h-4 w-4" />
+                                        Role Management
+                                    </DropdownMenuItem>
+                                </>
+                            )}
+
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => router.push('/dashboard/settings')}>
                                 <Settings className="mr-2 h-4 w-4" />

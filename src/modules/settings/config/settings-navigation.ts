@@ -54,4 +54,12 @@ export const settingsNavigation: SettingsNavItem[] = [
         permission: 'settings.security.view',
         description: 'Password policy and session management',
     },
+    {
+        key: 'maintenance',
+        label: 'Maintenance',
+        icon: 'Construction',
+        href: '/dashboard/settings/general',
+        permission: 'settings.general.view',
+        description: 'Storefront maintenance mode toggle',
+    },
 ];
