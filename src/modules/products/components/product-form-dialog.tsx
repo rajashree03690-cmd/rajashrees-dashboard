@@ -368,7 +368,7 @@ export function ProductFormDialog({ open, onOpenChange, onSuccess, initialProduc
                 variantData.variant_id = initialProduct.variants[0].variant_id;
             }
 
-            productData.variants = hasVariants ? [] : [variantData];
+            productData.variants = hasVariants ? variants : [variantData];
 
             console.log('📤 Submitting product:', productData);
 
@@ -387,9 +387,21 @@ export function ProductFormDialog({ open, onOpenChange, onSuccess, initialProduc
             onOpenChange(false);
         } catch (error: any) {
             console.error('❌ Error saving product:', error);
-            const errorMsg = error.message || 'Failed to save product';
+            let errorMsg = error.message || 'Failed to save product';
+            
+            // Backend validation parsing for user friendly messages
+            if (errorMsg.includes('duplicate key value') && errorMsg.includes('sku')) {
+                errorMsg = 'A product or variant with this SKU already exists. Please use a unique SKU.';
+            } else if (errorMsg.includes('violates not-null constraint')) {
+                errorMsg = 'A required field is missing. Please check all variant fields.';
+            } else if (errorMsg.includes('invalid input syntax')) {
+                errorMsg = 'Invalid number format in price or stock fields.';
+            } else if (errorMsg.includes('Failed to fetch')) {
+                errorMsg = 'Network error. Please check your connection and try again.';
+            }
+
             setError(errorMsg);
-            toast.error(errorMsg);
+            toast.error(`Update Failed: ${errorMsg}`);
         } finally {
             setLoading(false);
         }
