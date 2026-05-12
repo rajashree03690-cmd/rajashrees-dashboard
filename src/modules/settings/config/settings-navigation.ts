@@ -37,6 +37,7 @@ export const settingsNavigation: SettingsNavItem[] = [
         href: '/dashboard/settings/users',
         permission: 'settings.users.view',
         description: 'Manage dashboard administrators',
+        adminOnly: true,
     },
     {
         key: 'permissions',
@@ -45,6 +46,7 @@ export const settingsNavigation: SettingsNavItem[] = [
         href: '/dashboard/settings/permissions',
         permission: 'settings.permissions.view',
         description: 'Configure roles and access control',
+        adminOnly: true,
     },
     {
         key: 'security',

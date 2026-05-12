@@ -195,4 +195,5 @@ export interface SettingsNavItem {
     href: string;
     permission?: string; // Required permission to view
     description?: string;
+    adminOnly?: boolean; // If true, only users with 'admin' role can view
 }

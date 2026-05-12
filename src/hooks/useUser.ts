@@ -54,7 +54,7 @@ export function useUser() {
 export function useIsAdmin() {
     const { user, loading } = useUser();
     return {
-        isAdmin: user?.role === 'Admin',
+        isAdmin: user?.role?.toLowerCase() === 'admin',
         loading
     };
 }
@@ -62,7 +62,7 @@ export function useIsAdmin() {
 export function useCanEdit() {
     const { user, loading } = useUser();
     return {
-        canEdit: user?.role === 'Admin' || user?.role === 'Manager',
+        canEdit: user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'manager',
         loading
     };
 }

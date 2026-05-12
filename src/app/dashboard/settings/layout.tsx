@@ -37,7 +37,7 @@ export default function SettingsLayout({
     children: React.ReactNode;
 }) {
     const pathname = usePathname();
-    const { hasPermission, loading } = useUserPermissions();
+    const { hasPermission, loading, isAdminRole } = useUserPermissions();
 
     return (
         <div className="min-h-screen bg-[#FAFAFA]">
@@ -64,6 +64,11 @@ export default function SettingsLayout({
                         ) : (
                             <nav className="space-y-2">
                                 {settingsNavigation.map((item) => {
+                                    // Hide if it's admin-only and the user is not an admin
+                                    if (item.adminOnly && !isAdminRole) {
+                                        return null;
+                                    }
+
                                     // Hide item if user doesn't have permission
                                     if (item.permission && !hasPermission(item.permission)) {
                                         return null;

@@ -113,7 +113,25 @@ serve(async (req) => {
                     price_at_add: finalPrice
                 })
 
-            if (insertError) throw insertError
+            // Handle race condition: if another request inserted the same item concurrently
+            if (insertError && insertError.code === '23505') {
+                // Unique constraint violation — item was inserted by a concurrent request
+                const { data: justInserted } = await supabaseClient
+                    .from('cart_item')
+                    .select('cart_item_id, quantity')
+                    .eq('cart_id', cart.cart_id)
+                    .eq('variant_id', variant_id)
+                    .single()
+
+                if (justInserted) {
+                    await supabaseClient
+                        .from('cart_item')
+                        .update({ quantity: justInserted.quantity + quantity })
+                        .eq('cart_item_id', justInserted.cart_item_id)
+                }
+            } else if (insertError) {
+                throw insertError
+            }
         }
 
         return new Response(

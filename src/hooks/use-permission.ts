@@ -102,7 +102,7 @@ export function useUserPermissions() {
         return permissions.some(p => p.permission_name === key);
     };
 
-    return { permissions, hasPermission, loading };
+    return { permissions, hasPermission, loading, isAdminRole };
 }
 
 // Helper to get current user ID from custom auth session
