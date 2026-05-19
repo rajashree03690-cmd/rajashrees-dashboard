@@ -10,7 +10,9 @@ import {
     TrendingUp,
     RefreshCw,
     Calendar,
-    Filter,
+    ArrowUpRight,
+    ArrowDownRight,
+    Minus
 } from 'lucide-react';
 import {
     LineChart,
@@ -29,93 +31,110 @@ import {
     Legend,
     ResponsiveContainer,
 } from 'recharts';
-import { dashboardService } from '@/modules/dashboard/services/dashboard.service';
 import { Button } from '@/components/ui/button';
-import { DatePicker } from '@/components/ui/date-picker';
+import { DateRangeFilter, DatePreset, getPresetDates } from '@/modules/analytics/components/DateRangeFilter';
+import { analyticsService, SalesAnalytics } from '@/modules/analytics/services/analytics.service';
+import Link from 'next/link';
+import { useIsAdmin } from '@/hooks/useUser';
 
 interface DashboardStats {
     totalSales: number;
     orderCount: number;
     customerCount: number;
     productCount: number;
-}
-
-interface WeeklyData {
-    day: string;
-    total_sales: number;
-    order_count: number;
+    prevTotalSales: number;
+    prevOrderCount: number;
 }
 
 export default function DashboardPage() {
+    const { isAdmin } = useIsAdmin();
+    const defaultDates = getPresetDates('7d');
+    const [dateFrom, setDateFrom] = useState<Date>(defaultDates.from);
+    const [dateTo, setDateTo] = useState<Date>(defaultDates.to);
+
     const [stats, setStats] = useState<DashboardStats>({
         totalSales: 0,
         orderCount: 0,
         customerCount: 0,
         productCount: 0,
+        prevTotalSales: 0,
+        prevOrderCount: 0
     });
 
-    const [weeklyData, setWeeklyData] = useState<WeeklyData[]>([]);
+    const [salesData, setSalesData] = useState<SalesAnalytics | null>(null);
     const [loading, setLoading] = useState(true);
-    const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-    const [selectedSource, setSelectedSource] = useState<string>('All');
     const [error, setError] = useState<string | null>(null);
 
-    // Fetch real-time data - Matching Flutter logic exactly
-    useEffect(() => {
-        async function fetchDashboardData() {
-            setLoading(true);
-            setError(null);
-            try {
-                console.log('📅 Fetching data for date:', selectedDate.toISOString().split('T')[0]);
+    const loadData = async (from: Date, to: Date) => {
+        setLoading(true);
+        setError(null);
+        try {
+            // Calculate previous period
+            const diffTime = Math.abs(to.getTime() - from.getTime());
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            const prevTo = new Date(from);
+            prevTo.setDate(prevTo.getDate() - 1);
+            const prevFrom = new Date(prevTo);
+            prevFrom.setDate(prevFrom.getDate() - diffDays);
 
-                // Parallel fetch all data
-                const [dailyStats, customers, products, weekly] = await Promise.all([
-                    dashboardService.getDailySalesStats(selectedDate, selectedSource === 'All' ? 'All' : selectedSource),
-                    dashboardService.getTotalCustomers(),
-                    dashboardService.getTotalProducts(),
-                    dashboardService.getWeeklySalesStats(selectedDate),
-                ]);
+            // Fetch current period data
+            const [sales, products, customers, prevSales] = await Promise.all([
+                analyticsService.getSalesAnalytics(from, to),
+                analyticsService.getProductInsights(from, to),
+                analyticsService.getCustomerAnalytics(from, to),
+                analyticsService.getSalesAnalytics(prevFrom, prevTo)
+            ]);
 
-                // Update state
-                setStats({
-                    totalSales: dailyStats?.total_sales || 0,
-                    orderCount: dailyStats?.order_count || 0,
-                    customerCount: customers,
-                    productCount: products,
-                });
+            setSalesData(sales);
+            setStats({
+                totalSales: sales.totalRevenue,
+                orderCount: sales.totalOrders,
+                customerCount: customers.totalCustomers,
+                productCount: products.totalActive,
+                prevTotalSales: prevSales.totalRevenue,
+                prevOrderCount: prevSales.totalOrders
+            });
 
-                // Process weekly data
-                const formattedWeekly = weekly?.map((item, index) => ({
-                    day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][index] || `Day ${index + 1}`,
-                    total_sales: item.total_sales || 0,
-                    order_count: item.order_count || 0,
-                })) || [];
-
-                setWeeklyData(formattedWeekly);
-
-            } catch (err) {
-                console.error('Error fetching dashboard data:', err);
-                setError('Failed to load dashboard data. Please verify your connection.');
-            } finally {
-                setLoading(false);
-            }
+        } catch (err) {
+            console.error('Error fetching dashboard data:', err);
+            setError('Failed to load dashboard data.');
+        } finally {
+            setLoading(false);
         }
+    };
 
-        fetchDashboardData();
-    }, [selectedDate, selectedSource]); // Refresh when date or source changes
+    useEffect(() => {
+        loadData(dateFrom, dateTo);
+    }, []);
+
+    const handleDateChange = (from: Date, to: Date) => {
+        setDateFrom(from);
+        setDateTo(to);
+        loadData(from, to);
+    };
 
     const handleRefresh = () => {
-        setLoading(true);
-        // Trigger re-fetch by updating state
-        setSelectedDate(new Date(selectedDate));
+        loadData(dateFrom, dateTo);
     };
+
+    // Calculate Trend
+    const calculateTrend = (current: number, previous: number) => {
+        if (previous === 0) return { val: current > 0 ? 100 : 0, isPos: current > 0 };
+        const change = ((current - previous) / previous) * 100;
+        return { val: Math.abs(change), isPos: change >= 0 };
+    };
+
+    const salesTrend = calculateTrend(stats.totalSales, stats.prevTotalSales);
+    const ordersTrend = calculateTrend(stats.orderCount, stats.prevOrderCount);
 
     const statCards = [
         {
             title: 'Total Sales',
-            value: `₹${stats.totalSales.toLocaleString('en-IN')}`,
+            value: `₹${stats.totalSales.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`,
             icon: DollarSign,
-            change: '+20.1%',
+            trend: salesTrend,
+            trendText: 'vs previous period',
             bgGradient: 'from-blue-50 to-blue-100',
             gradient: 'from-blue-500 to-blue-700',
         },
@@ -123,7 +142,8 @@ export default function DashboardPage() {
             title: 'Total Orders',
             value: stats.orderCount.toLocaleString('en-IN'),
             icon: ShoppingCart,
-            change: '+18.5%',
+            trend: ordersTrend,
+            trendText: 'vs previous period',
             bgGradient: 'from-green-50 to-green-100',
             gradient: 'from-green-500 to-green-700',
         },
@@ -131,35 +151,36 @@ export default function DashboardPage() {
             title: 'Total Customers',
             value: stats.customerCount.toLocaleString('en-IN'),
             icon: Users,
-            change: '+12.3%',
             bgGradient: 'from-purple-50 to-purple-100',
             gradient: 'from-purple-500 to-purple-700',
+            trendText: 'active accounts',
+            trend: { val: 0, isPos: true } // Static for now
         },
         {
             title: 'Total Products',
             value: stats.productCount.toLocaleString('en-IN'),
             icon: Package,
-            change: '+5.7%',
             bgGradient: 'from-yellow-50 to-yellow-100',
             gradient: 'from-yellow-500 to-yellow-700',
+            trendText: 'in catalog',
+            trend: { val: 0, isPos: true } // Static for now
         },
     ];
 
     return (
         <div className="space-y-8 p-6 bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
             {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl flex items-center gap-2">
-                    <AlertCircle className="h-5 w-5" />
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl flex items-center justify-between">
                     <p>{error}</p>
-                    <Button variant="link" size="sm" onClick={handleRefresh} className="text-red-700 underline ml-auto">
+                    <Button variant="link" size="sm" onClick={handleRefresh} className="text-red-700 underline">
                         Retry
                     </Button>
                 </div>
             )}
 
-            {/* Header - Matching Flutter */}
+            {/* Header */}
             <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
-                <div className="flex items-center justify-between flex-wrap gap-4">
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                     <div>
                         <h1 className="text-4xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
                             Dashboard Overview
@@ -169,26 +190,12 @@ export default function DashboardPage() {
                         </p>
                     </div>
 
-                    {/* Filters - Date & Source */}
-                    <div className="flex items-center gap-3 flex-wrap">
-                        {/* Date Picker */}
-                        <DatePicker
-                            date={selectedDate}
-                            onDateChange={setSelectedDate}
+                    <div className="flex items-center gap-3">
+                        <DateRangeFilter
+                            dateFrom={dateFrom}
+                            dateTo={dateTo}
+                            onDateChange={handleDateChange}
                         />
-
-                        {/* Source Filter */}
-                        <select
-                            value={selectedSource}
-                            onChange={(e) => setSelectedSource(e.target.value)}
-                            className="px-4 py-2 border border-gray-300 rounded-lg bg-white text-sm font-medium"
-                        >
-                            <option value="All">All Sources</option>
-                            <option value="Website">Website</option>
-                            <option value="WhatsApp">WhatsApp</option>
-                        </select>
-
-                        {/* Refresh Button */}
                         <Button
                             variant="outline"
                             size="icon"
@@ -201,25 +208,7 @@ export default function DashboardPage() {
                 </div>
             </div>
 
-            {/* No Data Info Banner */}
-            {!loading && stats.totalSales === 0 && stats.orderCount === 0 && (
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                        <Calendar className="h-5 w-5 text-blue-600" />
-                    </div>
-                    <div className="flex-1">
-                        <h3 className="text-sm font-semibold text-blue-900 mb-1">
-                            No sales data for {selectedDate.toDateString() === new Date().toDateString() ? 'today' : selectedDate.toDateString()}
-                        </h3>
-                        <p className="text-sm text-blue-700">
-                            No orders found for <strong>{selectedDate.toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })}</strong>.
-                            Try selecting a different date using the date picker above to view historical data.
-                        </p>
-                    </div>
-                </div>
-            )}
-
-            {/* Summary Cards - REAL-TIME DATA */}
+            {/* KPI Cards */}
             {loading ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     {[1, 2, 3, 4].map((i) => (
@@ -234,7 +223,7 @@ export default function DashboardPage() {
                     {statCards.map((stat) => (
                         <Card
                             key={stat.title}
-                            className={`hover:shadow-2xl transition-all duration-300 hover:scale-105 border-0 bg-gradient-to-br ${stat.bgGradient} overflow-hidden relative`}
+                            className={`hover:shadow-2xl transition-all duration-300 hover:scale-105 border-0 bg-gradient-to-br ${stat.bgGradient} overflow-hidden relative group`}
                         >
                             <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${stat.gradient} opacity-10 rounded-full -mr-16 -mt-16`} />
                             <CardHeader className="flex flex-row items-center justify-between pb-2 relative z-10">
@@ -247,278 +236,215 @@ export default function DashboardPage() {
                             </CardHeader>
                             <CardContent className="relative z-10">
                                 <div className="text-3xl font-bold text-gray-900">{stat.value}</div>
-                                <p className="text-sm text-green-600 mt-2 flex items-center gap-1">
-                                    <TrendingUp className="h-4 w-4" />
-                                    {stat.change} from last month
-                                </p>
+                                <div className="mt-2 flex items-center text-sm">
+                                    {stat.trend.val > 0 ? (
+                                        stat.trend.isPos ? (
+                                            <ArrowUpRight className="h-4 w-4 text-green-600 mr-1" />
+                                        ) : (
+                                            <ArrowDownRight className="h-4 w-4 text-red-600 mr-1" />
+                                        )
+                                    ) : (
+                                        <Minus className="h-4 w-4 text-gray-400 mr-1" />
+                                    )}
+                                    <span className={`font-medium ${stat.trend.val > 0 ? (stat.trend.isPos ? 'text-green-600' : 'text-red-600') : 'text-gray-500'}`}>
+                                        {stat.trend.val > 0 ? `${stat.trend.val.toFixed(1)}%` : ''}
+                                    </span>
+                                    <span className="text-gray-500 ml-1.5 text-xs">{stat.trendText}</span>
+                                </div>
                             </CardContent>
                         </Card>
                     ))}
                 </div>
             )}
 
-            {/* Compact KPI Mini-Charts Section */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* Sales Trend Mini */}
-                <Card className="border-0 shadow-md overflow-hidden hover:shadow-lg transition-all">
-                    <CardContent className="p-4">
-                        <div className="flex items-center justify-between mb-2">
-                            <div>
-                                <p className="text-xs text-gray-500 uppercase tracking-wide">Weekly Trend</p>
-                                <h3 className="text-lg font-bold text-gray-900">Sales</h3>
-                            </div>
-                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-100 to-indigo-100 flex items-center justify-center">
-                                <TrendingUp className="h-6 w-6 text-indigo-600" />
-                            </div>
-                        </div>
-                        <ResponsiveContainer width="100%" height={60}>
-                            <LineChart data={weeklyData}>
-                                <Line
-                                    type="monotone"
-                                    dataKey="total_sales"
-                                    stroke="#6366F1"
-                                    strokeWidth={2}
-                                    dot={false}
-                                />
-                            </LineChart>
-                        </ResponsiveContainer>
-                        <p className="text-xs text-gray-500 mt-1">Last 7 days</p>
-                    </CardContent>
-                </Card>
+            {/* Quick Links / Mini Charts */}
+            {isAdmin && !loading && salesData && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <Link href="/dashboard/analytics/sales" className="block">
+                        <Card className="border-0 shadow-md hover:shadow-lg transition-all cursor-pointer h-full">
+                            <CardContent className="p-4">
+                                <div className="flex items-center justify-between mb-2">
+                                    <div>
+                                        <p className="text-xs text-gray-500 uppercase tracking-wide">Revenue</p>
+                                        <h3 className="text-lg font-bold text-indigo-600">Analytics</h3>
+                                    </div>
+                                    <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center">
+                                        <TrendingUp className="h-5 w-5 text-indigo-600" />
+                                    </div>
+                                </div>
+                                <p className="text-xs text-gray-500 mt-2">View detailed sales and revenue reports →</p>
+                            </CardContent>
+                        </Card>
+                    </Link>
 
-                {/* Orders Trend Mini */}
-                <Card className="border-0 shadow-md overflow-hidden hover:shadow-lg transition-all">
-                    <CardContent className="p-4">
-                        <div className="flex items-center justify-between mb-2">
-                            <div>
-                                <p className="text-xs text-gray-500 uppercase tracking-wide">Weekly Trend</p>
-                                <h3 className="text-lg font-bold text-gray-900">Orders</h3>
-                            </div>
-                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-100 to-emerald-100 flex items-center justify-center">
-                                <ShoppingCart className="h-6 w-6 text-green-600" />
-                            </div>
-                        </div>
-                        <ResponsiveContainer width="100%" height={60}>
-                            <LineChart data={weeklyData}>
-                                <Line
-                                    type="monotone"
-                                    dataKey="order_count"
-                                    stroke="#10B981"
-                                    strokeWidth={2}
-                                    dot={false}
-                                />
-                            </LineChart>
-                        </ResponsiveContainer>
-                        <p className="text-xs text-gray-500 mt-1">Last 7 days</p>
-                    </CardContent>
-                </Card>
+                    <Link href="/dashboard/analytics/products" className="block">
+                        <Card className="border-0 shadow-md hover:shadow-lg transition-all cursor-pointer h-full">
+                            <CardContent className="p-4">
+                                <div className="flex items-center justify-between mb-2">
+                                    <div>
+                                        <p className="text-xs text-gray-500 uppercase tracking-wide">Products</p>
+                                        <h3 className="text-lg font-bold text-emerald-600">Insights</h3>
+                                    </div>
+                                    <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center">
+                                        <Package className="h-5 w-5 text-emerald-600" />
+                                    </div>
+                                </div>
+                                <p className="text-xs text-gray-500 mt-2">View top sellers and stock alerts →</p>
+                            </CardContent>
+                        </Card>
+                    </Link>
+                    
+                    <Link href="/dashboard/analytics/customers" className="block">
+                        <Card className="border-0 shadow-md hover:shadow-lg transition-all cursor-pointer h-full">
+                            <CardContent className="p-4">
+                                <div className="flex items-center justify-between mb-2">
+                                    <div>
+                                        <p className="text-xs text-gray-500 uppercase tracking-wide">Customers</p>
+                                        <h3 className="text-lg font-bold text-blue-600">Intelligence</h3>
+                                    </div>
+                                    <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center">
+                                        <Users className="h-5 w-5 text-blue-600" />
+                                    </div>
+                                </div>
+                                <p className="text-xs text-gray-500 mt-2">View acquisition and top spenders →</p>
+                            </CardContent>
+                        </Card>
+                    </Link>
 
-                {/* Average Order Value */}
-                <Card className="border-0 shadow-md overflow-hidden hover:shadow-lg transition-all">
-                    <CardContent className="p-4">
-                        <div className="flex items-center justify-between mb-2">
-                            <div>
-                                <p className="text-xs text-gray-500 uppercase tracking-wide">Average Order</p>
-                                <h3 className="text-lg font-bold text-gray-900">
-                                    ₹{stats.orderCount > 0 ? Math.round(stats.totalSales / stats.orderCount) : 0}
-                                </h3>
-                            </div>
-                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-100 to-red-100 flex items-center justify-center">
-                                <DollarSign className="h-6 w-6 text-orange-600" />
-                            </div>
-                        </div>
-                        <div className="h-[60px] flex items-center">
-                            <div className="w-full bg-gradient-to-r from-orange-200 to-red-200 rounded-full h-3">
-                                <div
-                                    className="bg-gradient-to-r from-orange-500 to-red-500 h-3 rounded-full transition-all"
-                                    style={{ width: `${Math.min((stats.orderCount / stats.customerCount) * 100, 100)}%` }}
-                                />
-                            </div>
-                        </div>
-                        <p className="text-xs text-gray-500 mt-1">Per customer order</p>
-                    </CardContent>
-                </Card>
-
-                {/* Conversion Rate */}
-                <Card className="border-0 shadow-md overflow-hidden hover:shadow-lg transition-all">
-                    <CardContent className="p-4">
-                        <div className="flex items-center justify-between mb-2">
-                            <div>
-                                <p className="text-xs text-gray-500 uppercase tracking-wide">Active Rate</p>
-                                <h3 className="text-lg font-bold text-gray-900">
-                                    {stats.customerCount > 0 ? ((stats.orderCount / stats.customerCount) * 100).toFixed(1) : 0}%
-                                </h3>
-                            </div>
-                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-100 to-cyan-100 flex items-center justify-center">
-                                <Users className="h-6 w-6 text-blue-600" />
-                            </div>
-                        </div>
-                        <div className="h-[60px] flex items-center justify-center">
-                            <ResponsiveContainer width="100%" height={60}>
-                                <PieChart>
-                                    <Pie
-                                        data={[
-                                            { name: 'Active', value: stats.orderCount },
-                                            { name: 'Inactive', value: Math.max(0, stats.customerCount - stats.orderCount) }
-                                        ]}
-                                        cx="50%"
-                                        cy="50%"
-                                        innerRadius={15}
-                                        outerRadius={25}
-                                        paddingAngle={2}
-                                        dataKey="value"
-                                    >
-                                        <Cell fill="#3B82F6" />
-                                        <Cell fill="#E5E7EB" />
-                                    </Pie>
-                                </PieChart>
-                            </ResponsiveContainer>
-                        </div>
-                        <p className="text-xs text-gray-500 mt-1">Customer engagement</p>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* Charts Section - Two Column Layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Weekly Sales Performance - Area Chart */}
-                <Card className="border-0 shadow-xl bg-white overflow-hidden">
-                    <CardHeader className="bg-gradient-to-r from-indigo-50 to-purple-50 border-b border-gray-100">
-                        <CardTitle className="flex items-center gap-2">
-                            <TrendingUp className="h-5 w-5 text-indigo-600" />
-                            Weekly Sales Performance
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-6">
-                        {loading ? (
-                            <div className="h-[320px] flex items-center justify-center">
-                                <RefreshCw className="h-8 w-8 animate-spin text-indigo-600" />
-                            </div>
-                        ) : weeklyData.length > 0 ? (
-                            <ResponsiveContainer width="100%" height={320}>
-                                <AreaChart data={weeklyData}>
-                                    <defs>
-                                        <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#6366F1" stopOpacity={0.4} />
-                                            <stop offset="95%" stopColor="#6366F1" stopOpacity={0.05} />
-                                        </linearGradient>
-                                        <linearGradient id="colorOrders" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#10B981" stopOpacity={0.4} />
-                                            <stop offset="95%" stopColor="#10B981" stopOpacity={0.05} />
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                                    <XAxis
-                                        dataKey="day"
-                                        stroke="#6B7280"
-                                        style={{ fontSize: '12px', fontWeight: '500' }}
-                                    />
-                                    <YAxis
-                                        stroke="#6B7280"
-                                        style={{ fontSize: '12px', fontWeight: '500' }}
-                                    />
-                                    <Tooltip
-                                        contentStyle={{
-                                            backgroundColor: 'white',
-                                            borderRadius: '12px',
-                                            border: '1px solid #E5E7EB',
-                                            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-                                            padding: '12px'
-                                        }}
-                                    />
-                                    <Legend
-                                        wrapperStyle={{ paddingTop: '20px' }}
-                                        iconType="circle"
-                                    />
-                                    <Area
-                                        type="monotone"
-                                        dataKey="total_sales"
-                                        name="Sales (₹)"
-                                        stroke="#6366F1"
-                                        strokeWidth={3}
-                                        fill="url(#colorSales)"
-                                    />
-                                    <Area
-                                        type="monotone"
-                                        dataKey="order_count"
-                                        name="Orders"
-                                        stroke="#10B981"
-                                        strokeWidth={3}
-                                        fill="url(#colorOrders)"
-                                    />
-                                </AreaChart>
-                            </ResponsiveContainer>
-                        ) : (
-                            <div className="h-[320px] flex items-center justify-center text-gray-500">
-                                <div className="text-center">
-                                    <TrendingUp className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-                                    <p>No weekly data available</p>
+                    <Card className="border-0 shadow-md h-full">
+                        <CardContent className="p-4">
+                            <div className="flex items-center justify-between mb-2">
+                                <div>
+                                    <p className="text-xs text-gray-500 uppercase tracking-wide">Active Rate</p>
+                                    <h3 className="text-lg font-bold text-gray-900">
+                                        {stats.customerCount > 0 ? ((stats.orderCount / stats.customerCount) * 100).toFixed(1) : 0}%
+                                    </h3>
+                                </div>
+                                <div className="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center">
+                                    <Users className="h-5 w-5 text-orange-600" />
                                 </div>
                             </div>
-                        )}
-                    </CardContent>
-                </Card>
+                            <div className="h-2 w-full bg-gray-100 rounded-full mt-4 overflow-hidden">
+                                <div 
+                                    className="h-full bg-orange-500" 
+                                    style={{ width: `${Math.min((stats.orderCount / (stats.customerCount || 1)) * 100, 100)}%` }}
+                                />
+                            </div>
+                            <p className="text-xs text-gray-500 mt-2">Orders to Customers ratio</p>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
 
-                {/* Order Distribution - Bar Chart */}
-                <Card className="border-0 shadow-xl bg-white overflow-hidden">
-                    <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b border-gray-100">
-                        <CardTitle className="flex items-center gap-2">
-                            <ShoppingCart className="h-5 w-5 text-green-600" />
-                            Daily Order Distribution
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-6">
-                        {loading ? (
-                            <div className="h-[320px] flex items-center justify-center">
-                                <RefreshCw className="h-8 w-8 animate-spin text-green-600" />
+            {/* Charts Section */}
+            {!loading && salesData && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Sales Performance - Area Chart */}
+                    <Card className="border-0 shadow-xl bg-white overflow-hidden">
+                        <CardHeader className="bg-gradient-to-r from-indigo-50 to-purple-50 border-b border-gray-100">
+                            <CardTitle className="flex items-center gap-2 text-indigo-900">
+                                <TrendingUp className="h-5 w-5 text-indigo-600" />
+                                Sales Performance
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="pt-6">
+                            <div className="h-[320px]">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <AreaChart data={salesData.dailyData}>
+                                        <defs>
+                                            <linearGradient id="colorSalesDash" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#6366F1" stopOpacity={0.4} />
+                                                <stop offset="95%" stopColor="#6366F1" stopOpacity={0.05} />
+                                            </linearGradient>
+                                            <linearGradient id="colorOrdersDash" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#10B981" stopOpacity={0.4} />
+                                                <stop offset="95%" stopColor="#10B981" stopOpacity={0.05} />
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
+                                        <XAxis
+                                            dataKey="date"
+                                            tickFormatter={(v) => new Date(v).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                                            stroke="#6B7280"
+                                            style={{ fontSize: '12px' }}
+                                        />
+                                        <YAxis
+                                            yAxisId="left"
+                                            tickFormatter={(v) => `₹${(v/1000).toFixed(0)}k`}
+                                            stroke="#6B7280"
+                                            style={{ fontSize: '12px' }}
+                                        />
+                                        <YAxis
+                                            yAxisId="right"
+                                            orientation="right"
+                                            stroke="#6B7280"
+                                            style={{ fontSize: '12px' }}
+                                        />
+                                        <Tooltip
+                                            labelFormatter={(label) => new Date(label).toLocaleDateString('en-IN', { dateStyle: 'medium' })}
+                                        />
+                                        <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                                        <Area
+                                            yAxisId="left"
+                                            type="monotone"
+                                            dataKey="revenue"
+                                            name="Revenue (₹)"
+                                            stroke="#6366F1"
+                                            strokeWidth={3}
+                                            fill="url(#colorSalesDash)"
+                                        />
+                                        <Area
+                                            yAxisId="right"
+                                            type="monotone"
+                                            dataKey="orders"
+                                            name="Orders"
+                                            stroke="#10B981"
+                                            strokeWidth={3}
+                                            fill="url(#colorOrdersDash)"
+                                        />
+                                    </AreaChart>
+                                </ResponsiveContainer>
                             </div>
-                        ) : weeklyData.length > 0 ? (
-                            <ResponsiveContainer width="100%" height={320}>
-                                <BarChart data={weeklyData}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                                    <XAxis
-                                        dataKey="day"
-                                        stroke="#6B7280"
-                                        style={{ fontSize: '12px', fontWeight: '500' }}
-                                    />
-                                    <YAxis
-                                        stroke="#6B7280"
-                                        style={{ fontSize: '12px', fontWeight: '500' }}
-                                    />
-                                    <Tooltip
-                                        contentStyle={{
-                                            backgroundColor: 'white',
-                                            borderRadius: '12px',
-                                            border: '1px solid #E5E7EB',
-                                            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-                                            padding: '12px'
-                                        }}
-                                        cursor={{ fill: 'rgba(16, 185, 129, 0.1)' }}
-                                    />
-                                    <Legend
-                                        wrapperStyle={{ paddingTop: '20px' }}
-                                        iconType="circle"
-                                    />
-                                    <Bar
-                                        dataKey="order_count"
-                                        name="Orders"
-                                        fill="#10B981"
-                                        radius={[8, 8, 0, 0]}
-                                        maxBarSize={60}
-                                    />
-                                </BarChart>
-                            </ResponsiveContainer>
-                        ) : (
-                            <div className="h-[320px] flex items-center justify-center text-gray-500">
-                                <div className="text-center">
-                                    <ShoppingCart className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-                                    <p>No order data available</p>
-                                </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Order Distribution - Bar Chart */}
+                    <Card className="border-0 shadow-xl bg-white overflow-hidden">
+                        <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b border-gray-100">
+                            <CardTitle className="flex items-center gap-2 text-emerald-900">
+                                <ShoppingCart className="h-5 w-5 text-green-600" />
+                                Orders by Date
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="pt-6">
+                            <div className="h-[320px]">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={salesData.dailyData}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
+                                        <XAxis
+                                            dataKey="date"
+                                            tickFormatter={(v) => new Date(v).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                                            stroke="#6B7280"
+                                            style={{ fontSize: '12px' }}
+                                        />
+                                        <YAxis stroke="#6B7280" style={{ fontSize: '12px' }} />
+                                        <Tooltip
+                                            labelFormatter={(label) => new Date(label).toLocaleDateString('en-IN', { dateStyle: 'medium' })}
+                                            cursor={{ fill: 'rgba(16, 185, 129, 0.1)' }}
+                                        />
+                                        <Bar
+                                            dataKey="orders"
+                                            name="Orders"
+                                            fill="#10B981"
+                                            radius={[4, 4, 0, 0]}
+                                        />
+                                    </BarChart>
+                                </ResponsiveContainer>
                             </div>
-                        )}
-                    </CardContent>
-                </Card>
-            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
         </div>
     );
 }

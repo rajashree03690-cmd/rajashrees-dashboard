@@ -27,7 +27,8 @@ import {
     Users2,
     Settings,
     Flame,
-    Inbox
+    Inbox,
+    BarChart3
 } from 'lucide-react';
 import { useIsAdmin } from '@/hooks/useUser';
 
@@ -83,6 +84,21 @@ const getMenuConfig = (isAdmin) => {
 
     // Add System group only if admin
     if (isAdmin) {
+        config.push({
+            id: 'analytics',
+            label: 'Analytics & Reports',
+            icon: BarChart3,
+            type: 'group',
+            items: [
+                { label: 'Sales', href: '/dashboard/analytics/sales', icon: ShoppingCart },
+                { label: 'Products', href: '/dashboard/analytics/products', icon: Package },
+                { label: 'Customers', href: '/dashboard/analytics/customers', icon: Users },
+                { label: 'Shipping', href: '/dashboard/analytics/shipping', icon: Truck },
+                { label: 'Procurement', href: '/dashboard/analytics/procurement', icon: ShoppingBag },
+                { label: 'Returns', href: '/dashboard/analytics/returns', icon: RotateCcw }
+            ]
+        });
+
         config.push({
             id: 'system',
             label: 'System',
