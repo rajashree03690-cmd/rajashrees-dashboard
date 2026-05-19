@@ -119,7 +119,7 @@ serve(async (req) => {
         const q2Start = Date.now();
         const { data: variants } = await supabaseClient
             .from('product_variants')
-            .select('product_id, variant_id, variant_name, sku, saleprice, regularprice, stock, image_url, is_Active, is_trending')
+            .select('product_id, variant_id, variant_name, sku, saleprice, regularprice, costprice, stock, weight, color, size, image_url, image_2_url, image_3_url, is_Active, is_trending')
             .in('product_id', productIds)
             .eq('is_Active', true)
             .limit(200)
@@ -178,7 +178,10 @@ serve(async (req) => {
                     variant_id: v.variant_id, variant_name: v.variant_name, name: v.variant_name,
                     sku: v.sku, saleprice: v.saleprice || v.regularprice || 0, salePrice: v.saleprice || v.regularprice || 0,
                     regularprice: v.regularprice || v.saleprice || 0, regularPrice: v.regularprice || v.saleprice || 0,
-                    stock: v.stock || 0, stock_quantity: v.stock || 0, image_url: v.image_url,
+                    costprice: v.costprice || 0, cost_price: v.costprice || 0,
+                    stock: v.stock || 0, stock_quantity: v.stock || 0,
+                    weight: v.weight || 0, color: v.color || '', size: v.size || '',
+                    image_url: v.image_url, image_2_url: v.image_2_url || '', image_3_url: v.image_3_url || '',
                     isActive: v.is_Active, is_Active: v.is_Active, is_trending: v.is_trending
                 }))
             })

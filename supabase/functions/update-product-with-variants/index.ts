@@ -95,8 +95,26 @@ serve(async (req) => {
             // We need to remove 'variant_id' key if it is null/undefined so PG generates it.
 
             // Separate variants into inserts (no variant_id) and updates (has variant_id)
-            const insertVariants = variants.filter((v: any) => !v.variant_id);
+            const insertVariantsRaw = variants.filter((v: any) => !v.variant_id);
             const updateVariants = variants.filter((v: any) => v.variant_id);
+
+            let insertVariants: any[] = [];
+            if (insertVariantsRaw.length > 0) {
+                // Generate next variant_id (table has no auto-increment)
+                const { data: maxVariantRow } = await supabase
+                    .from("product_variants")
+                    .select("variant_id")
+                    .order("variant_id", { ascending: false })
+                    .limit(1)
+                    .single();
+
+                let nextVariantId = (maxVariantRow?.variant_id || 100000) + 1;
+                
+                insertVariants = insertVariantsRaw.map((v: any) => ({
+                    ...v,
+                    variant_id: nextVariantId++
+                }));
+            }
 
             if (insertVariants.length > 0) {
                 const { error: insertError } = await supabase
