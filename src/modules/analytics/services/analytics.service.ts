@@ -23,6 +23,8 @@ export interface ProductInsights {
     bottomSellers: { name: string; sku: string; qty: number }[];
     categoryRevenue: { category: string; revenue: number; orders: number }[];
     stockHealth: { status: string; count: number }[];
+    outOfStockItems?: { name: string; sku: string; stock: number }[];
+    lowStockItems?: { name: string; sku: string; stock: number }[];
 }
 
 export interface CustomerAnalytics {
@@ -151,8 +153,11 @@ export const analyticsService = {
             .eq('is_Active', true);
 
         const allVariants = variants || [];
-        const outOfStock = allVariants.filter(v => (v.stock || 0) <= 0).length;
-        const lowStock = allVariants.filter(v => (v.stock || 0) > 0 && (v.stock || 0) < 5).length;
+        const outOfStockItems = allVariants.filter(v => (v.stock || 0) <= 0).map(v => ({ name: v.variant_name || 'Unknown', sku: v.sku || '', stock: v.stock || 0 }));
+        const lowStockItems = allVariants.filter(v => (v.stock || 0) > 0 && (v.stock || 0) < 5).map(v => ({ name: v.variant_name || 'Unknown', sku: v.sku || '', stock: v.stock || 0 }));
+        
+        const outOfStock = outOfStockItems.length;
+        const lowStock = lowStockItems.length;
         const avgSalePrice = allVariants.length > 0
             ? allVariants.reduce((s, v) => s + (v.saleprice || 0), 0) / allVariants.length
             : 0;
@@ -168,16 +173,16 @@ export const analyticsService = {
 
         const { data: orderItems } = await supabase
             .from('order_items')
-            .select('product_variant_id, quantity, orders!inner(created_at, order_status), product_variants(sku, variant_name, saleprice, product_id, master_product:product_id(name))')
+            .select('catalogue_product_id, quantity, price, orders!inner(created_at, order_status), product_variants(sku, variant_name, master_product(name))')
             .gte('orders.created_at', `${fromStr}T00:00:00`)
             .lte('orders.created_at', `${toStr}T23:59:59`)
             .neq('orders.order_status', 'Cancelled');
 
         const skuMap = new Map<string, { name: string; sku: string; qty: number; revenue: number }>();
         (orderItems || []).forEach((item: any) => {
-            const sku = item.product_variants?.sku || item.product_variant_id;
+            const sku = item.product_variants?.sku || item.catalogue_product_id;
             const name = item.product_variants?.master_product?.name || item.product_variants?.variant_name || 'Unknown';
-            const price = item.product_variants?.saleprice || 0;
+            const price = item.price || 0;
             if (!skuMap.has(sku)) skuMap.set(sku, { name, sku, qty: 0, revenue: 0 });
             const entry = skuMap.get(sku)!;
             entry.qty += item.quantity || 0;
@@ -200,7 +205,8 @@ export const analyticsService = {
 
         return {
             totalActive: totalActive || 0, outOfStock, lowStock, avgSalePrice,
-            topSellers, bottomSellers, categoryRevenue: [], stockHealth
+            topSellers, bottomSellers, categoryRevenue: [], stockHealth,
+            outOfStockItems, lowStockItems
         };
     },
 
@@ -298,7 +304,7 @@ export const analyticsService = {
 
         const { data: shipments } = await supabase
             .from('shipment_tracking')
-            .select('shipment_id, order_id, status, shipping_provider, created_at, orders!inner(shipping_state)')
+            .select('shipment_id, order_id, shipping_status, shipping_provider, created_at, orders!inner(shipping_state)')
             .gte('created_at', `${fromStr}T00:00:00`)
             .lte('created_at', `${toStr}T23:59:59`);
 
@@ -307,7 +313,7 @@ export const analyticsService = {
 
         const statusMap = new Map<string, number>();
         rows.forEach(s => {
-            const st = s.status || 'Unknown';
+            const st = s.shipping_status || 'Unknown';
             statusMap.set(st, (statusMap.get(st) || 0) + 1);
         });
         const statusBreakdown = Array.from(statusMap.entries()).map(([status, count]) => ({ status, count }));
@@ -345,7 +351,7 @@ export const analyticsService = {
     async getProcurementAnalytics(_from: Date, _to: Date): Promise<ProcurementAnalytics> {
         const { data: purchases } = await supabase
             .from('purchase')
-            .select('purchase_id, invoice_no, invoice_date, amount, payment_status, vendor_id, vendor:vendor_id(name)')
+            .select('purchase_id, invoice_no, invoice_date, amount, vendor_id, vendor:vendor_id(name)')
             .order('invoice_date', { ascending: false });
 
         const rows = (purchases || []) as any[];

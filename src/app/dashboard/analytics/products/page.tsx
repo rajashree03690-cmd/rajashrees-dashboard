@@ -7,6 +7,8 @@ import { ExportButton } from '@/modules/analytics/components/ExportButton';
 import { KpiCard } from '@/modules/analytics/components/KpiCard';
 import { analyticsService, ProductInsights } from '@/modules/analytics/services/analytics.service';
 import { RefreshCw, Package, AlertTriangle, AlertCircle, TrendingUp, TrendingDown } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
     PieChart, Pie, Cell, Legend
@@ -23,6 +25,7 @@ const STOCK_COLORS: Record<string, string> = {
 export default function ProductInsightsPage() {
     const [loading, setLoading] = useState(true);
     const [data, setData] = useState<ProductInsights | null>(null);
+    const [dialogData, setDialogData] = useState<{ title: string, items: {name: string, sku: string, stock: number}[] } | null>(null);
 
     const defaultDates = getPresetDates('30d');
     const [dateFrom, setDateFrom] = useState<Date>(defaultDates.from);
@@ -97,12 +100,14 @@ export default function ProductInsightsPage() {
                             value={data.outOfStock.toLocaleString()}
                             icon={<AlertCircle className="h-5 w-5" />}
                             colorClass="text-red-600"
+                            onClick={() => setDialogData({ title: 'Out of Stock Products', items: data.outOfStockItems || [] })}
                         />
                         <KpiCard
                             title="Low Stock Alerts"
                             value={data.lowStock.toLocaleString()}
                             icon={<AlertTriangle className="h-5 w-5" />}
                             colorClass="text-orange-600"
+                            onClick={() => setDialogData({ title: 'Low Stock Products (1-5 units)', items: data.lowStockItems || [] })}
                         />
                         <KpiCard
                             title="Avg Sale Price"
@@ -236,6 +241,46 @@ export default function ProductInsightsPage() {
                             </CardContent>
                         </Card>
                     </div>
+                    <Dialog open={!!dialogData} onOpenChange={(open) => !open && setDialogData(null)}>
+                        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+                            <DialogHeader>
+                                <DialogTitle>{dialogData?.title}</DialogTitle>
+                            </DialogHeader>
+                            {dialogData && (
+                                <div className="mt-4">
+                                    {dialogData.items.length === 0 ? (
+                                        <p className="text-gray-500 text-center py-4">No products found.</p>
+                                    ) : (
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-sm text-left border rounded-lg">
+                                                <thead className="bg-gray-50 text-gray-700 font-medium">
+                                                    <tr>
+                                                        <th className="px-4 py-3">Product Name</th>
+                                                        <th className="px-4 py-3">SKU</th>
+                                                        <th className="px-4 py-3 text-right">Current Stock</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y">
+                                                    {dialogData.items.map((item, idx) => (
+                                                        <tr key={idx} className="hover:bg-gray-50">
+                                                            <td className="px-4 py-3 font-medium text-gray-900">{item.name}</td>
+                                                            <td className="px-4 py-3 font-mono text-xs text-gray-500">{item.sku}</td>
+                                                            <td className={`px-4 py-3 text-right font-bold ${item.stock <= 0 ? 'text-red-600' : 'text-orange-600'}`}>
+                                                                {item.stock}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                            <DialogFooter>
+                                <Button variant="outline" onClick={() => setDialogData(null)}>Close</Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
                 </>
             )}
         </div>

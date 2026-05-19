@@ -9,15 +9,16 @@ interface KpiCardProps {
     trend?: number; // percentage, positive for up, negative for down
     trendLabel?: string;
     colorClass?: string; // e.g. 'text-blue-600', 'bg-blue-100'
+    onClick?: () => void;
 }
 
-export function KpiCard({ title, value, icon, trend, trendLabel, colorClass = 'text-indigo-600' }: KpiCardProps) {
+export function KpiCard({ title, value, icon, trend, trendLabel, colorClass = 'text-indigo-600', onClick }: KpiCardProps) {
     const isPositive = trend !== undefined && trend > 0;
     const isNegative = trend !== undefined && trend < 0;
     const isNeutral = trend !== undefined && trend === 0;
 
     return (
-        <Card className="hover:shadow-md transition-shadow">
+        <Card className={`transition-shadow ${onClick ? 'cursor-pointer hover:shadow-lg hover:border-indigo-200' : 'hover:shadow-md'}`} onClick={onClick}>
             <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-4">
                     <p className="text-sm font-medium text-gray-500">{title}</p>
