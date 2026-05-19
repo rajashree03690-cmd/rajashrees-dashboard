@@ -14,7 +14,8 @@ export async function GET() {
         // Fetch categories with their subcategories
         const { data: categories, error: catError } = await supabase
             .from('categories')
-            .select('id, name')
+            .select('id, name, is_active')
+            .eq('is_active', true)
             .order('name');
 
         if (catError) throw catError;
