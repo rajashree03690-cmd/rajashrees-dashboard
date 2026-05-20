@@ -30,12 +30,30 @@ serve(async (req) => {
         const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-        // Fetch product with ALL variant fields (not just a subset)
+        // Fetch product with variants
         const { data: product, error: productError } = await supabase
             .from('master_product')
             .select(`
                 *,
-                variants:product_variants(*)
+                variants:product_variants(
+                    variant_id,
+                    variant_name,
+                    saleprice,
+                    regularprice,
+                    costprice,
+                    stock,
+                    sku,
+                    weight,
+                    length,
+                    color,
+                    size,
+                    image_url,
+                    image_2_url,
+                    image_3_url,
+                    is_variant,
+                    is_Active,
+                    is_trending
+                )
             `)
             .eq('product_id', product_id)
             .single();
